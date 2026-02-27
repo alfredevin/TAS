@@ -230,10 +230,13 @@ include './../config.php';
             </div>
         </section>
     </main>
+
     <?php include '../template/footer.php'; ?>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <?php include '../template/script.php'; ?>
+
     <script>
+        // SweetAlert function for action verification
         function confirmAction(type, id) {
             const title = (type === 'confirm') ? 'Confirm Travel?' : 'Decline Request?';
             const text = (type === 'confirm') ? 'This will forward the request to the Admin.' : 'The employee will be notified of the rejection.';
@@ -253,6 +256,8 @@ include './../config.php';
                 }
             });
         }
+
+        // Success Alert handling
         document.addEventListener('DOMContentLoaded', function() {
             const type = sessionStorage.getItem('swal_type');
             const msg = sessionStorage.getItem('swal_msg');

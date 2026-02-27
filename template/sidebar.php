@@ -76,10 +76,10 @@ $is_staff = (!$is_admin && !$is_director && !$is_head);
                 <?php if ($is_head): ?>
                     <li><a href="for_confirmation"
                             class="<?php echo ($current_page == 'for_confirmation') ? 'active' : ''; ?>"><i
-                                class="bi bi-circle"></i><span>For Confirmation</span></a></li>
-                    <li><a href="confirmed_history"
+                                class="bi bi-circle"></i><span>TA For Confirmation</span></a></li>
+                    <!-- <li><a href="confirmed_history"
                             class="<?php echo ($current_page == 'confirmed_history') ? 'active' : ''; ?>"><i
-                                class="bi bi-circle"></i><span>Confirmed History</span></a></li>
+                                class="bi bi-circle"></i><span>Confirmed History</span></a></li> -->
                 <?php endif; ?>
 
                 <?php if ($is_admin): ?>
@@ -111,17 +111,18 @@ $is_staff = (!$is_admin && !$is_director && !$is_head);
             <li class="nav-item">
                 <a class="nav-link <?php echo in_array($current_page, ['travel_reports', 'certificate_appearance']) ? '' : 'collapsed'; ?>"
                     data-bs-target="#compliance-nav" data-bs-toggle="collapse" href="#">
-                    <i class="bi bi-journal-check"></i><span>Compliance</span><i class="bi bi-chevron-down ms-auto"></i>
+                    <i class="bi bi-journal-check"></i><span>Report</span><i class="bi bi-chevron-down ms-auto"></i>
                 </a>
                 <ul id="compliance-nav"
                     class="nav-content collapse <?php echo in_array($current_page, ['travel_reports', 'certificate_appearance']) ? 'show' : ''; ?>"
                     data-bs-parent="#sidebar-nav">
-                    <li><a href="travel_reports"
-                            class="<?php echo ($current_page == 'travel_reports') ? 'active' : ''; ?>"><i
-                                class="bi bi-circle"></i><span>Accomplishment Reports</span></a></li>
-                    <li><a href="certificate_appearance"
+                     <li><a href="certificate_appearance"
                             class="<?php echo ($current_page == 'certificate_appearance') ? 'active' : ''; ?>"><i
                                 class="bi bi-circle"></i><span>Cert. of Appearance</span></a></li>
+                    <li><a href="travel_reports"
+                            class="<?php echo ($current_page == 'travel_reports') ? 'active' : ''; ?>"><i
+                                class="bi bi-circle"></i><span>Travel Reports</span></a></li>
+                   
                 </ul>
             </li>
         <?php endif; ?>

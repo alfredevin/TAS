@@ -57,13 +57,13 @@ $is_staff = (!$is_admin && !$is_director && !$is_head);
         <li class="nav-heading">Travel Authority</li>
 
         <li class="nav-item">
-            <a class="nav-link <?php echo in_array($current_page, ['request_ta', 'faculty_travel_stats','employee_ta_details','my_travels', 'for_confirmation', 'pending_approval', 'travel_archive']) ? '' : 'collapsed'; ?>"
+            <a class="nav-link <?php echo in_array($current_page, ['request_ta', 'faculty_travel_stats','employee_ta_details', 'my_travels', 'for_confirmation', 'pending_approval', 'travel_archive', 'monitor_travel']) ? '' : 'collapsed'; ?>"
                 data-bs-target="#ta-nav" data-bs-toggle="collapse" href="#">
                 <i class="bi bi-airplane-engines"></i><span>Travel Management</span><i
                     class="bi bi-chevron-down ms-auto"></i>
             </a>
             <ul id="ta-nav"
-                class="nav-content collapse <?php echo in_array($current_page, ['request_ta', 'faculty_travel_stats','employee_ta_details', 'my_travels', 'for_confirmation', 'pending_approval', 'travel_archive']) ? 'show' : ''; ?>"
+                class="nav-content collapse <?php echo in_array($current_page, ['request_ta', 'faculty_travel_stats','employee_ta_details', 'my_travels', 'for_confirmation', 'pending_approval', 'travel_archive', 'monitor_travel']) ? 'show' : ''; ?>"
                 data-bs-parent="#sidebar-nav">
 
                 <?php if ($is_staff || $is_head): ?>
@@ -96,6 +96,10 @@ $is_staff = (!$is_admin && !$is_director && !$is_head);
                     <li><a href="travel_archive"
                             class="<?php echo ($current_page == 'travel_archive') ? 'active' : ''; ?>"><i
                                 class="bi bi-circle"></i><span>Print Approved TA</span></a></li>
+
+                    <li><a href="monitor_travel"
+                            class="<?php echo ($current_page == 'monitor_travel') ? 'active' : ''; ?>"><i
+                                class="bi bi-circle"></i><span>Live Monitoring</span></a></li>
                 <?php endif; ?>
 
                 <?php if ($is_director): ?>

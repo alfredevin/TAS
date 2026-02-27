@@ -319,80 +319,93 @@ include './../config.php';
 
     <script>
         function trackTravel(data) {
-            // 1. Update Modal Header & Summary
             const fmtDateOnly = (d) => d ? new Date(d).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
+                month: 'short', day: 'numeric', year: 'numeric'
             }) : "-";
-            document.getElementById('pv-memo-no').innerText = `Memo: ${data.memo_no}`;
+
+            const fmtFull = (d) => d ? new Date(d).toLocaleString('en-US', {
+                month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            }) : "Pending";
+
+            document.getElementById('pv-memo-no').innerText = `Memo: ${data.memo_no || 'N/A'}`;
             document.getElementById('pv-dest-text').innerText = data.destination;
             document.getElementById('pv-date-text').innerText = fmtDateOnly(data.travel_date);
 
             let html = '';
-            const fmtFull = (d) => d ? new Date(d).toLocaleString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            }) : "Pending";
+            const status = parseInt(data.status);
 
-            // CONFIG PARA SA STEPS
-            const steps = [{
-                label: "Request Submitted",
-                desc: "Filing of TA by the faculty member",
-                date: data.submitted_at,
-                isDone: true,
-                icon: "bi-file-earmark-plus"
-            },
-            {
-                label: "Head Confirmation",
-                desc: "Approval from the Department Head",
-                date: data.head_confirmed_at,
-                isDone: data.status >= 1,
-                isActive: data.status == 0,
-                icon: "bi-person-check"
-            },
-            {
-                label: "Admin Approval",
-                desc: "Final review and assignment of Memo No.",
-                date: data.admin_approved_at,
-                isDone: data.status >= 2,
-                isActive: data.status == 1,
-                icon: "bi-shield-check"
-            },
-            {
-                label: "Ready to Print",
-                desc: "Document is now available ",
-                date: data.admin_approved_at,
-                isDone: data.status >= 2,
-                isActive: false,
-                icon: "bi-printer"
-            }
+            // CONFIGURATION WITH REJECTION LOGIC
+            const steps = [
+                {
+                    label: "Request Submitted",
+                    desc: "Filing of TA by the faculty member",
+                    date: data.submitted_at,
+                    isDone: true,
+                    isRejected: false,
+                    icon: "bi-file-earmark-plus"
+                },
+                {
+                    label: "Head Confirmation",
+                    desc: status == 99 && !data.head_confirmed_at ? "Rejected by Department Head" : "Approval from the Department Head",
+                    date: data.head_confirmed_at,
+                    isDone: status >= 1 && status != 99,
+                    // Na-reject dito kung status 99 at walang timestamp ang head
+                    isRejected: status == 99 && (!data.head_confirmed_at || data.head_confirmed_at === null),
+                    isActive: status == 0,
+                    icon: "bi-person-check"
+                },
+                {
+                    label: "Admin Approval",
+                    desc: status == 99 && data.head_confirmed_at ? "Rejected by Admin" : "Final review and assignment of Memo No.",
+                    date: data.admin_approved_at,
+                    isDone: status >= 2 && status != 99,
+                    // Na-reject dito kung status 99 pero naka-confirm na ang head
+                    isRejected: status == 99 && (data.head_confirmed_at && !data.admin_approved_at),
+                    isActive: status == 1,
+                    icon: "bi-shield-check"
+                },
+                {
+                    label: "Ready to Print",
+                    desc: "Document is now available",
+                    date: data.admin_approved_at,
+                    isDone: status >= 2 && status != 99,
+                    isRejected: false, // Hindi na aabot dito kung rejected sa taas
+                    isActive: false,
+                    icon: "bi-printer"
+                }
             ];
 
-            steps.forEach((step, index) => {
-                let statusClass = step.isDone ? 'completed' : (step.isActive ? 'active' : '');
+            steps.forEach((step) => {
+                let statusClass = '';
+                let iconHtml = `<i class="bi ${step.icon}"></i>`;
+
+                if (step.isRejected) {
+                    statusClass = 'rejected'; // Gagawa tayo ng CSS para dito
+                    iconHtml = `<i class="bi bi-x-lg"></i>`;
+                } else if (step.isDone) {
+                    statusClass = 'completed';
+                    iconHtml = `<i class="bi bi-check-lg"></i>`;
+                } else if (step.isActive) {
+                    statusClass = 'active';
+                }
 
                 html += `
-                <div class="tracking-item ${statusClass}">
-                    <div class="tracking-icon shadow-sm">
-                        <i class="bi ${step.isDone ? 'bi-check-lg' : step.icon}"></i>
-                    </div>
-                    <div class="ps-2">
-                        <span class="tracking-date">${step.isDone ? fmtFull(step.date) : (step.isActive ? 'Action Required' : 'Upcoming')}</span>
-                        <div class="tracking-content mb-0">${step.label}</div>
-                        <p class="text-muted small mb-0">${step.desc}</p>
-                    </div>
-                </div>`;
+        <div class="tracking-item ${statusClass}">
+            <div class="tracking-icon shadow-sm ${step.isRejected ? 'bg-danger border-danger text-white' : ''}">
+                ${iconHtml}
+            </div>
+            <div class="ps-2">
+                <span class="tracking-date">
+                    ${step.isRejected ? 'Declined' : (step.isDone ? fmtFull(step.date) : (step.isActive ? 'Action Required' : 'Upcoming'))}
+                </span>
+                <div class="tracking-content mb-0 ${step.isRejected ? 'text-danger' : ''}">${step.label}</div>
+                <p class="text-muted small mb-0">${step.desc}</p>
+            </div>
+        </div>`;
             });
 
             document.getElementById('trackingTimeline').innerHTML = html;
-
-            // Open Modal
-            const myModal = new bootstrap.Modal(document.getElementById('trackingModal'));
-            myModal.show();
+            new bootstrap.Modal(document.getElementById('trackingModal')).show();
         }
     </script>
 </body>

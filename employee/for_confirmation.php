@@ -1,6 +1,5 @@
 <?php
 include './../config.php';
-
 ?>
 
 <!DOCTYPE html>
@@ -68,7 +67,7 @@ include './../config.php';
     $head_info = mysqli_fetch_assoc($get_head_info);
     $my_dept_id = $head_info['department_id'] ?? 0;
 
-    // 2. Logic para sa Approval o Rejection (Mananatili ang existing logic mo)
+    // 2. Logic para sa Approval o Rejection
     if (isset($_POST['action_ta'])) {
         $ta_id = mysqli_real_escape_string($conn, $_POST['ta_id']);
         $action = $_POST['action_type'];
@@ -92,11 +91,17 @@ include './../config.php';
 
             $alert_type = "success";
             $alert_msg = "Travel request has been confirmed!";
-        } else {
-            mysqli_query($conn, "UPDATE ta_tbl SET status = 99 WHERE ta_id = '$ta_id'");
-            $msg_rej = "Your TA request was not confirmed. Please visit the office for details.";
+        } else if ($action == 'reject') {
+            // BAGO: Kunin ang reason at i-sanitize para iwas SQL Injection
+            $reason = mysqli_real_escape_string($conn, $_POST['decline_reason']);
+
+            // BAGO: I-update ang status at i-save ang reason
+            mysqli_query($conn, "UPDATE ta_tbl SET status = 99, decline_reason = '$reason' WHERE ta_id = '$ta_id'");
+
+            // BAGO: Isama ang reason sa notification ng employee
+            $msg_rej = "Your TA request was declined by your Department Head. Reason: " . $reason;
             mysqli_query($conn, "INSERT INTO notifications_tbl (recipient_id, sender_id, title, message, link) 
-                            VALUES ('$target_emp_id', '$my_id', 'TA Notification', '$msg_rej', 'my_travels.php')");
+                            VALUES ('$target_emp_id', '$my_id', 'TA Declined', '$msg_rej', 'my_travels.php')");
 
             $alert_type = "error";
             $alert_msg = "Travel request has been declined.";
@@ -157,7 +162,6 @@ include './../config.php';
             </ul>
 
             <div class="tab-content" id="pills-tabContent">
-
                 <div class="tab-pane fade show active" id="pills-pending" role="tabpanel">
                     <div class="card border-0 shadow-sm" style="border-radius: 15px;">
                         <div class="card-body pt-4">
@@ -181,13 +185,12 @@ include './../config.php';
                         </div>
                     </div>
                 </div>
-
             </div>
         </section>
     </main>
 
     <?php
-    // Reusable Table Function para malinis ang code
+    // Reusable Table Function
     function renderTable($result, $isActionable, $statusClass = '', $statusText = '')
     {
         ?>
@@ -223,6 +226,11 @@ include './../config.php';
                                     <div class="text-muted small text-truncate" style="max-width: 250px;">
                                         <i class="bi bi-info-circle me-1"></i><?= $row['task'] ?>
                                     </div>
+                                    <?php if (!$isActionable && $statusText == 'Declined' && !empty($row['decline_reason'])): ?>
+                                        <div class="text-danger small mt-1">
+                                            <strong>Reason:</strong> <?= $row['decline_reason'] ?>
+                                        </div>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <div class="small fw-bold"><i
@@ -237,6 +245,9 @@ include './../config.php';
                                             <input type="hidden" name="ta_id" value="<?= $row['ta_id'] ?>">
                                             <input type="hidden" name="requester_id" value="<?= $row['requester_id'] ?>">
                                             <input type="hidden" name="action_type" id="action-<?= $row['ta_id'] ?>" value="">
+
+                                            <input type="hidden" name="decline_reason" id="reason-<?= $row['ta_id'] ?>" value="">
+
                                             <button type="button" class="btn btn-confirm btn-sm shadow-sm"
                                                 onclick="confirmAction('confirm', <?= $row['ta_id'] ?>)">
                                                 <i class="bi bi-check2"></i> Confirm
@@ -271,28 +282,54 @@ include './../config.php';
     <?php include '../template/script.php'; ?>
 
     <script>
+        // BAGO: Updated SweetAlert Logic para humingi ng reason
         function confirmAction(type, id) {
-            const title = (type === 'confirm') ? 'Confirm Travel?' : 'Decline Request?';
-            const text = (type === 'confirm') ? 'This will forward the request to the Admin.' : 'The employee will be notified of the rejection.';
-            const color = (type === 'confirm') ? '#28a745' : '#dc3545';
-
-            Swal.fire({
-                title: title, text: text, icon: (type === 'confirm') ? 'question' : 'warning',
-                showCancelButton: true, confirmButtonColor: color,
-                confirmButtonText: (type === 'confirm') ? 'Yes, Confirm it!' : 'Yes, Decline it'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    document.getElementById('action-' + id).value = type;
-                    document.getElementById('submit-' + id).click();
-                }
-            });
+            if (type === 'confirm') {
+                Swal.fire({
+                    title: 'Confirm Travel?',
+                    text: 'This will forward the request to the Admin.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#28a745',
+                    confirmButtonText: 'Yes, Confirm it!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        document.getElementById('action-' + id).value = type;
+                        document.getElementById('submit-' + id).click();
+                    }
+                });
+            } else {
+                Swal.fire({
+                    title: 'Decline Request?',
+                    text: 'Please state the reason for declining:',
+                    icon: 'warning',
+                    input: 'textarea', // Gumawa ng text area
+                    inputPlaceholder: 'Type your reason here...',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    confirmButtonText: 'Yes, Decline it',
+                    preConfirm: (reason) => {
+                        if (!reason) {
+                            Swal.showValidationMessage('A reason is required to decline a request!');
+                        }
+                        return reason;
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Ipasa yung nilagay sa textarea papunta sa hidden form input
+                        document.getElementById('action-' + id).value = type;
+                        document.getElementById('reason-' + id).value = result.value;
+                        document.getElementById('submit-' + id).click();
+                    }
+                });
+            }
         }
 
         document.addEventListener('DOMContentLoaded', function () {
             const type = sessionStorage.getItem('swal_type');
             const msg = sessionStorage.getItem('swal_msg');
             if (type && msg) {
-                Swal.fire({ icon: type, title: msg, timer: 2000, showConfirmButton: false });
+                Swal.fire({ icon: type, title: msg, timer: 3000, showConfirmButton: false });
                 sessionStorage.removeItem('swal_type');
                 sessionStorage.removeItem('swal_msg');
             }

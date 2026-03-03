@@ -1,6 +1,5 @@
 <?php
 include './../config.php';
-
 ?>
 
 <!DOCTYPE html>
@@ -12,9 +11,9 @@ include './../config.php';
 </head>
 
 <body>
-
     <?php include '../template/navbar.php'; ?>
     <?php include '../template/sidebar.php'; ?>
+
     <style>
         :root {
             --marsu-maroon: #800000;
@@ -30,7 +29,6 @@ include './../config.php';
             transform: scale(1.02);
         }
 
-        /* Timeline Styling */
         .tracking-list {
             position: relative;
             padding: 20px 5px;
@@ -51,10 +49,6 @@ include './../config.php';
             height: 100%;
             background: #e9ecef;
             z-index: 0;
-        }
-
-        .tracking-item:last-child {
-            padding-bottom: 0;
         }
 
         .tracking-item:last-child::before {
@@ -111,7 +105,6 @@ include './../config.php';
             font-size: 11px;
             font-weight: bold;
             color: #6c757d;
-            margin-bottom: 2px;
         }
 
         .tracking-content {
@@ -119,43 +112,20 @@ include './../config.php';
             font-size: 14px;
             color: #212529;
         }
-
-        .badge-status {
-            font-size: 0.75rem;
-            padding: 0.5em 1em;
-            border-radius: 50px;
-        }
     </style>
     <?php
-
-
-    // 2. Query para sa Summary Cards
-    $summary_query = mysqli_query($conn, "SELECT 
-    COUNT(*) as total,
-    SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) as pending,
-    SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) as approved
-    FROM ta_tbl t JOIN ta_participants_tbl tp ON t.ta_id = tp.ta_id 
-    WHERE tp.employee_id = '$employee_id'");
+    // Summary Query
+    $summary_query = mysqli_query($conn, "SELECT COUNT(*) as total, SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) as pending, SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) as approved FROM ta_tbl t JOIN ta_participants_tbl tp ON t.ta_id = tp.ta_id WHERE tp.employee_id = '$employee_id'");
     $summary = mysqli_fetch_assoc($summary_query);
 
-    // 3. Query para sa Table
-    $query = "SELECT t.*, 
-          (SELECT COUNT(*) FROM ta_participants_tbl WHERE ta_id = t.ta_id) as total_pax
-          FROM ta_tbl t 
-          JOIN ta_participants_tbl tp ON t.ta_id = tp.ta_id 
-          WHERE tp.employee_id = '$employee_id' 
-          ORDER BY t.submitted_at DESC";
+    // Main Table Query - Isinama natin ang decline_reason
+    $query = "SELECT t.*, (SELECT COUNT(*) FROM ta_participants_tbl WHERE ta_id = t.ta_id) as total_pax FROM ta_tbl t JOIN ta_participants_tbl tp ON t.ta_id = tp.ta_id WHERE tp.employee_id = '$employee_id' ORDER BY t.submitted_at DESC";
     $result = mysqli_query($conn, $query);
     ?>
+
     <main id="main" class="main">
         <div class="pagetitle">
             <h1>My Travel Management</h1>
-            <nav>
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item">Home</li>
-                    <li class="breadcrumb-item active">Travels</li>
-                </ol>
-            </nav>
         </div>
 
         <section class="section">
@@ -163,42 +133,8 @@ include './../config.php';
                 <div class="col-md-4">
                     <div class="card card-stats border-0 shadow-sm">
                         <div class="card-body py-3">
-                            <div class="d-flex align-items-center">
-                                <div class="btn btn-light btn-sm rounded-circle me-3"><i
-                                        class="bi bi-files text-primary"></i></div>
-                                <div>
-                                    <h6 class="mb-0 text-muted small">Total Requests</h6>
-                                    <h4 class="mb-0 fw-bold"><?= $summary['total'] ?? 0 ?></h4>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card card-stats border-0 shadow-sm" style="border-left-color: #ffc107;">
-                        <div class="card-body py-3">
-                            <div class="d-flex align-items-center">
-                                <div class="btn btn-light btn-sm rounded-circle me-3"><i
-                                        class="bi bi-hourglass-split text-warning"></i></div>
-                                <div>
-                                    <h6 class="mb-0 text-muted small">Pending Approval</h6>
-                                    <h4 class="mb-0 fw-bold"><?= $summary['pending'] ?? 0 ?></h4>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card card-stats border-0 shadow-sm" style="border-left-color: #198754;">
-                        <div class="card-body py-3">
-                            <div class="d-flex align-items-center">
-                                <div class="btn btn-light btn-sm rounded-circle me-3"><i
-                                        class="bi bi-check-all text-success"></i></div>
-                                <div>
-                                    <h6 class="mb-0 text-muted small">Approved Travels</h6>
-                                    <h4 class="mb-0 fw-bold"><?= $summary['approved'] ?? 0 ?></h4>
-                                </div>
-                            </div>
+                            <h6 class="mb-0 text-muted small">Total Requests</h6>
+                            <h4 class="mb-0 fw-bold"><?= $summary['total'] ?? 0 ?></h4>
                         </div>
                     </div>
                 </div>
@@ -214,46 +150,41 @@ include './../config.php';
                                     <th>Memo No.</th>
                                     <th>Destination</th>
                                     <th>Status</th>
-                                    <th class="text-center">Track</th>
+                                    <th class="text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php while ($row = mysqli_fetch_assoc($result)):
                                     $status = $row['status'];
-
-                                    // Mas malinis na mapping para sa Badge Colors
                                     $status_config = [
                                         0 => ['badge' => 'bg-warning text-dark', 'label' => 'Pending'],
                                         1 => ['badge' => 'bg-info', 'label' => 'Confirmed'],
                                         2 => ['badge' => 'bg-success', 'label' => 'Approved'],
-                                        3 => ['badge' => 'bg-primary', 'label' => 'Completed'], // Submitted report
-                                        4 => ['badge' => 'bg-dark', 'label' => 'Verified'],  // Admin Archived
-                                        'default' => ['badge' => 'bg-danger', 'label' => 'Rejected']
+                                        99 => ['badge' => 'bg-danger', 'label' => 'Declined'],
+                                        'default' => ['badge' => 'bg-secondary', 'label' => 'Unknown']
                                     ];
-
                                     $config = $status_config[$status] ?? $status_config['default'];
-                                    $badge = $config['badge'];
-                                    $label = $config['label'];
                                     ?>
                                     <tr>
                                         <td class="small"><?= date("M d, Y", strtotime($row['submitted_at'])) ?></td>
-                                        <td class="fw-bold text-maroon"><?= $row['memo_no'] ?></td>
-
+                                        <td class="fw-bold text-maroon"><?= $row['memo_no'] ?: '---' ?></td>
                                         <td>
-                                            <div class="fw-bold text-dark"><?= $row['destination'] ?></div>
-                                            <div class="text-muted small" style="line-height: 1.2;">
-                                                <i class="bi bi-info-circle-fill me-1" style="font-size: 10px;"></i>
-                                                <?= (strlen($row['task']) > 50) ? substr($row['task'], 0, 50) . '...' : $row['task']; ?>
-                                            </div>
+                                            <div class="fw-bold"><?= $row['destination'] ?></div>
+                                            <div class="small text-muted"><?= substr($row['task'], 0, 40) ?>...</div>
                                         </td>
-
-                                        <td><span class="badge <?= $badge ?>"><?= $label ?></span></td>
-
+                                        <td><span class="badge <?= $config['badge'] ?>"><?= $config['label'] ?></span></td>
                                         <td class="text-center">
-                                            <button class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm"
-                                                onclick='trackTravel(<?= json_encode($row, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)'>
-                                                <i class="bi bi-search me-1"></i> Track
-                                            </button>
+                                            <?php if ($status == 99): ?>
+                                                <button class="btn btn-sm btn-warning rounded-pill px-3 shadow-sm"
+                                                    onclick='openResubmitModal(<?= json_encode($row, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)'>
+                                                    <i class="bi bi-arrow-repeat me-1"></i> Resubmit
+                                                </button>
+                                            <?php else: ?>
+                                                <button class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm"
+                                                    onclick='trackTravel(<?= json_encode($row, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)'>
+                                                    <i class="bi bi-search me-1"></i> Track
+                                                </button>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php endwhile; ?>
@@ -265,6 +196,51 @@ include './../config.php';
         </section>
     </main>
 
+    <div class="modal fade" id="resubmitModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
+                <div class="modal-header bg-warning border-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Edit & Resubmit Request</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="process_resubmit.php" method="POST">
+                    <div class="modal-body p-4">
+                        <input type="hidden" name="ta_id" id="res_ta_id">
+
+                        <div class="alert alert-danger mb-3 py-2 small">
+                            <strong>Reason for decline:</strong> <span id="res_decline_text"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Destination</label>
+                            <input type="text" name="destination" id="res_destination" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Purpose / Task</label>
+                            <textarea name="task" id="res_task" class="form-control" rows="3" required></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold">Travel Date</label>
+                                <input type="date" name="travel_date" id="res_travel_date" class="form-control"
+                                    required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold">Return Date</label>
+                                <input type="date" name="return_date" id="res_return_date" class="form-control"
+                                    required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" name="btn_resubmit"
+                            class="btn btn-warning fw-bold px-4 shadow-sm">Resubmit Request</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
     <div class="modal fade" id="trackingModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
@@ -318,6 +294,16 @@ include './../config.php';
 
 
     <script>
+        function openResubmitModal(data) {
+            document.getElementById('res_ta_id').value = data.ta_id;
+            document.getElementById('res_destination').value = data.destination;
+            document.getElementById('res_task').value = data.task;
+            document.getElementById('res_travel_date').value = data.travel_date;
+            document.getElementById('res_return_date').value = data.return_date;
+            document.getElementById('res_decline_text').innerText = data.decline_reason || "No reason specified.";
+
+            new bootstrap.Modal(document.getElementById('resubmitModal')).show();
+        }
         function trackTravel(data) {
             const fmtDateOnly = (d) => d ? new Date(d).toLocaleDateString('en-US', {
                 month: 'short', day: 'numeric', year: 'numeric'

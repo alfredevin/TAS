@@ -1,29 +1,44 @@
 <?php
 include './../config.php';
 
-// --- BACKEND LOGIC: ACTIONS ---
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $admin_id = $_SESSION['userid'];
-    $ta_id = mysqli_real_escape_string($conn, $_POST['ta_id']);
-    $target_emp_id = mysqli_real_escape_string($conn, $_POST['requester_id']);
+?>
 
-    // 1. FINAL APPROVAL LOGIC
-    if (isset($_POST['approve_final'])) {
-        $current_year = date("Y");
-        $count_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM ta_tbl WHERE status = 2 AND YEAR(admin_approved_at) = '$current_year'");
-        $row_count = mysqli_fetch_assoc($count_query);
-        $next_number = $row_count['total'] + 1;
-        $generated_memo = "TA" . $current_year . "-" . str_pad($next_number, 2, "0", STR_PAD_LEFT);
+<!DOCTYPE html>
+<html lang="en">
 
-        $update = mysqli_query($conn, "UPDATE ta_tbl SET status = 2, memo_no = '$generated_memo', admin_approved_at = NOW() WHERE ta_id = '$ta_id'");
+<head>
+    <?php include '../template/header.php'; ?>
 
-        if ($update) {
-            $msg = "Your TA (Ref: $generated_memo) is now approved and ready for printing.";
-            mysqli_query($conn, "INSERT INTO notifications_tbl (recipient_id, sender_id, title, message, link) VALUES ('$target_emp_id', '$admin_id', 'Ready to Print', '$msg', 'my_travels.php')");
+</head>
 
-            // Success Sequence using SweetAlert
-            echo "<script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>";
-            echo "<script>
+<body>
+    <?php include '../template/navbar.php'; ?>
+    <?php include '../template/sidebar.php'; ?>
+    <?php
+
+    // --- BACKEND LOGIC: ACTIONS ---
+    if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+        $admin_id = $_SESSION['userid'];
+        $ta_id = mysqli_real_escape_string($conn, $_POST['ta_id']);
+        $target_emp_id = mysqli_real_escape_string($conn, $_POST['requester_id']);
+
+        // 1. FINAL APPROVAL LOGIC
+        if (isset($_POST['approve_final'])) {
+            $current_year = date("Y");
+            $count_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM ta_tbl WHERE status = 2 AND YEAR(admin_approved_at) = '$current_year'");
+            $row_count = mysqli_fetch_assoc($count_query);
+            $next_number = $row_count['total'] + 1;
+            $generated_memo = "TA" . $current_year . "-" . str_pad($next_number, 2, "0", STR_PAD_LEFT);
+
+            $update = mysqli_query($conn, "UPDATE ta_tbl SET status = 2, memo_no = '$generated_memo', admin_approved_at = NOW() WHERE ta_id = '$ta_id'");
+
+            if ($update) {
+                $msg = "Your TA (Ref: $generated_memo) is now approved and ready for printing.";
+                mysqli_query($conn, "INSERT INTO notifications_tbl (recipient_id, sender_id, title, message, link) VALUES ('$target_emp_id', '$admin_id', 'Ready to Print', '$msg', 'my_travels.php')");
+
+                // Success Sequence using SweetAlert
+                echo "<script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>";
+                echo "<script>
                 document.addEventListener('DOMContentLoaded', function() {
                     Swal.fire({
                         title: 'Generating Document...',
@@ -42,52 +57,47 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     });
                 });
             </script>";
-        }
-    }
-
-    // 2. REJECT OR DECLINE LOGIC
-    if (isset($_POST['admin_action'])) {
-        $remarks = mysqli_real_escape_string($conn, $_POST['remarks']);
-        $type = $_POST['action_type']; // 'reject' or 'decline'
-
-        if ($type == 'reject') {
-            $status = 11; // Return to Faculty for Correction
-            $title = "TA Needs Correction";
-            $alert = "Request returned to faculty member.";
-        } else {
-            $status = 99; // Final Decline
-            $title = "TA Declined (Final)";
-            $alert = "Request has been permanently cancelled.";
+            }
         }
 
-        $update = mysqli_query($conn, "UPDATE ta_tbl SET status = $status, admin_remarks = '$remarks' WHERE ta_id = '$ta_id'");
-        if ($update) {
-            mysqli_query($conn, "INSERT INTO notifications_tbl (recipient_id, sender_id, title, message, link) VALUES ('$target_emp_id', '$admin_id', '$title', '$remarks', 'my_travels.php')");
-            echo "<script>
+        // 2. REJECT OR DECLINE LOGIC
+        if (isset($_POST['admin_action'])) {
+            $remarks = mysqli_real_escape_string($conn, $_POST['remarks']);
+            $type = $_POST['action_type']; // 'reject' or 'decline'
+    
+            if ($type == 'reject') {
+                $status = 11; // Return to Faculty for Correction
+                $title = "TA Needs Correction";
+                $alert = "Request returned to faculty member.";
+            } else {
+                $status = 99; // Final Decline
+                $title = "TA Declined (Final)";
+                $alert = "Request has been permanently cancelled.";
+            }
+
+            $update = mysqli_query($conn, "UPDATE ta_tbl SET status = $status, admin_remarks = '$remarks' WHERE ta_id = '$ta_id'");
+            if ($update) {
+                mysqli_query($conn, "INSERT INTO notifications_tbl (recipient_id, sender_id, title, message, link) VALUES ('$target_emp_id', '$admin_id', '$title', '$remarks', 'my_travels.php')");
+                echo "<script>
                 sessionStorage.setItem('swal_type', 'info');
                 sessionStorage.setItem('swal_msg', '$alert');
                 window.location.href='pending_approval.php';
             </script>";
+            }
         }
     }
-}
 
-// FETCH DATA
-$query = "SELECT t.*, e.employee_id as requester_id, e.first_name, e.last_name, d.department_name
+    // FETCH DATA
+    $query = "SELECT t.*, e.employee_id as requester_id, e.first_name, e.last_name, d.department_name
           FROM ta_tbl t 
           JOIN ta_participants_tbl tp ON t.ta_id = tp.ta_id 
           JOIN employee_tbl e ON tp.employee_id = e.employee_id 
           JOIN department_tbl d ON e.department_id = d.department_id
           WHERE t.status = 1 
           GROUP BY t.ta_id ORDER BY t.head_confirmed_at ASC";
-$result = mysqli_query($conn, $query);
-?>
+    $result = mysqli_query($conn, $query);
+    ?>
 
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <?php include '../template/header.php'; ?>
     <style>
         .admin-card {
             border-radius: 15px;
@@ -131,12 +141,6 @@ $result = mysqli_query($conn, $query);
             filter: brightness(0.9);
         }
     </style>
-</head>
-
-<body>
-    <?php include '../template/navbar.php'; ?>
-    <?php include '../template/sidebar.php'; ?>
-
     <main id="main" class="main">
         <div class="pagetitle">
             <h1>Final TA Approval</h1>

@@ -6,7 +6,7 @@ if (!isset($_GET['id'])) {
 }
 $ta_id = $_GET['id'];
 
-// Kunin ang data mula sa database
+// 1. Kunin ang data mula sa database
 $query = "SELECT t.*, e.first_name as app_fname, e.last_name as app_lname, e.position_name as app_pos 
           FROM ta_tbl t 
           LEFT JOIN employee_tbl e ON t.approver_id = e.employee_id 
@@ -16,10 +16,10 @@ $stmt->bind_param("i", $ta_id);
 $stmt->execute();
 $ta = $stmt->get_result()->fetch_assoc();
 
-// Kunin ang listahan ng mga Travelers
+// 2. Kunin ang listahan ng mga Travelers
 $t_query = "SELECT e.first_name, e.last_name FROM ta_participants_tbl tp 
             JOIN employee_tbl e ON tp.employee_id = e.employee_id 
-            WHERE tp.ta_id = ?"; // Siguraduhing tama ang column name ng foreign key mo
+            WHERE tp.ta_id = ?";
 $t_stmt = $conn->prepare($t_query);
 $t_stmt->bind_param("i", $ta_id);
 $t_stmt->execute();
@@ -29,9 +29,26 @@ while ($row = $travelers_res->fetch_assoc()) {
     $names[] = "MR. " . strtoupper($row['first_name'] . " " . $row['last_name']);
 }
 
+// --- DITO MO DAPAT ILAGAY ANG MGA PHP FUNCTIONS ---
+
 function formatDate($date)
 {
     return date("F d, Y", strtotime($date));
+}
+
+// BAGO: PHP Function para sa Date Range
+function formatTravelRange($start, $end)
+{
+    $startDate = strtotime($start);
+    $endDate = strtotime($end);
+
+    // Kung walang return date o pareho lang ang petsa (1 day travel)
+    if (empty($end) || $start === $end) {
+        return date("F d, Y", $startDate);
+    }
+
+    // Format na hiningi mo: March 25, 2026 - March 28, 2026
+    return date("F d, Y", $startDate) . " - " . date("F d, Y", $endDate);
 }
 ?>
 <!DOCTYPE html>
@@ -290,7 +307,8 @@ function formatDate($date)
                 <td class="meta-value">
                     Prof. DIOSDADO P. ZULUETA, DPA<br>
                     <span style="font-weight: normal;">SUC President III</span><br><br>
-                    <span style="font-style: italic; font-weight: normal;">By the Authority of the University President:</span><br><br>
+                    <span style="font-style: italic; font-weight: normal;">By the Authority of the University
+                        President:</span><br><br>
                     <?= strtoupper($ta['app_fname'] . " " . $ta['app_lname']) ?><br>
                     <span style="font-weight: normal;"><?= $ta['app_pos'] ?></span>
                 </td>
@@ -299,7 +317,7 @@ function formatDate($date)
                 <td class="meta-label">TO</td>
                 <td>:</td>
                 <td class="meta-value">
-                    <div  >
+                    <div>
                         <?php echo implode("<br>", $names); ?>
                     </div>
                 </td>
@@ -314,13 +332,17 @@ function formatDate($date)
         <div class="hr-thick"></div>
 
         <div class="body-content">
-            <p class=""> &nbsp; &nbsp; &nbsp; In the exigency of service, please be informed that you are hereby authorized to go to
-                <span class="underline-bold"><?= $ta['destination'] ?></span> on
-                <span class="underline-bold"><?= formatDate($ta['travel_date']) ?></span>, to
-                <span class="underline-bold"><?= $ta['task'] ?></span>.
+            <p class=""> &nbsp; &nbsp; &nbsp; In the exigency of service, please be informed that you are hereby
+                authorized to go to
+                <span class="underline-bold " style="font-weight: bolder;"><?= $ta['destination'] ?></span> on
+                <span class="underline-bold"
+                    style="font-weight: bolder;"><?= formatTravelRange($ta['travel_date'], $ta['return_date']) ?></span>,
+                to
+                <span class="underline-bold" style="font-weight: bolder;"><?= $ta['task'] ?></span>.
             </p>
 
-            <p class="">&nbsp; &nbsp; &nbsp;You are expected to return to your official workstation upon completion of the said purposes, unless this office informs you of an extension due to other official business.</p>
+            <p class="">&nbsp; &nbsp; &nbsp;You are expected to return to your official workstation upon completion of
+                the said purposes, unless this office informs you of an extension due to other official business.</p>
 
             <p class="">For information and compliance.</p>
         </div>
@@ -330,7 +352,9 @@ function formatDate($date)
 
             <div class="cert-body">
                 <p style="text-indent: 50px;">
-                    This is to certify that <b><u><span><?= implode(", ", $names) ?></span></u></b> personally appeared in this office to transact official business on <b><u><span><?= formatDate($ta['travel_date']) ?></span></u></b>.
+                    This is to certify that <b><u><span><?= implode(", ", $names) ?></span></u></b> personally appeared
+                    in this office to transact official business on
+                    <b><u><span><?= formatTravelRange($ta['travel_date'], $ta['return_date']) ?></span></u></b>.
                 </p>
                 <p>This certificate is issued with travel itinerary.</p>
             </div>
@@ -414,7 +438,9 @@ function formatDate($date)
     </div>
 
     <div class="no-print" style="position: fixed; bottom: 20px; right: 20px;">
-        <button onclick="window.print()" style="padding: 10px 20px; background: #012970; color: #fff; border: none; cursor: pointer; border-radius: 5px;">Print Document</button>
+        <button onclick="window.print()"
+            style="padding: 10px 20px; background: #012970; color: #fff; border: none; cursor: pointer; border-radius: 5px;">Print
+            Document</button>
     </div>
 
 </body>

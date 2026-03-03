@@ -57,18 +57,20 @@ $is_staff = (!$is_admin && !$is_director && !$is_head);
         <li class="nav-heading">Travel Authority</li>
 
         <li class="nav-item">
-            <a class="nav-link <?php echo in_array($current_page, ['request_ta', 'faculty_travel_stats','employee_ta_details', 'my_travels', 'for_confirmation', 'pending_approval', 'travel_archive', 'monitor_travel']) ? '' : 'collapsed'; ?>"
+            <a class="nav-link <?php echo in_array($current_page, ['request_ta', 'pass_slip','pass_slip_approval', 'faculty_travel_stats', 'employee_ta_details', 'my_travels', 'for_confirmation', 'pending_approval', 'travel_archive', 'monitor_travel']) ? '' : 'collapsed'; ?>"
                 data-bs-target="#ta-nav" data-bs-toggle="collapse" href="#">
                 <i class="bi bi-airplane-engines"></i><span>Travel Management</span><i
                     class="bi bi-chevron-down ms-auto"></i>
             </a>
             <ul id="ta-nav"
-                class="nav-content collapse <?php echo in_array($current_page, ['request_ta', 'faculty_travel_stats','employee_ta_details', 'my_travels', 'for_confirmation', 'pending_approval', 'travel_archive', 'monitor_travel']) ? 'show' : ''; ?>"
+                class="nav-content collapse <?php echo in_array($current_page, ['request_ta','pass_slip_approval', 'pass_slip', 'faculty_travel_stats', 'employee_ta_details', 'my_travels', 'for_confirmation', 'pending_approval', 'travel_archive', 'monitor_travel']) ? 'show' : ''; ?>"
                 data-bs-parent="#sidebar-nav">
 
                 <?php if ($is_staff || $is_head): ?>
                     <li><a href="request_ta" class="<?php echo ($current_page == 'request_ta') ? 'active' : ''; ?>"><i
                                 class="bi bi-circle"></i><span>New TA Request</span></a></li>
+                    <li><a href="pass_slip" class="<?php echo ($current_page == 'pass_slip') ? 'active' : ''; ?>"><i
+                                class="bi bi-circle"></i><span>Pass Slip Request</span></a></li>
                     <li><a href="my_travels" class="<?php echo ($current_page == 'my_travels') ? 'active' : ''; ?>"><i
                                 class="bi bi-circle"></i><span>My Travel Status</span></a></li>
                 <?php endif; ?>
@@ -92,7 +94,10 @@ $is_staff = (!$is_admin && !$is_director && !$is_head);
 
                     <li><a href="pending_approval"
                             class="<?php echo ($current_page == 'pending_approval') ? 'active' : ''; ?>"><i
-                                class="bi bi-circle"></i><span>For Final Approval</span></a></li>
+                                class="bi bi-circle"></i><span>TA Approval</span></a></li>
+                    <li><a href="pass_slip_approval"
+                            class="<?php echo ($current_page == 'pass_slip_approval') ? 'active' : ''; ?>"><i
+                                class="bi bi-circle"></i><span>Pass Slip Approval</span></a></li>
                     <li><a href="travel_archive"
                             class="<?php echo ($current_page == 'travel_archive') ? 'active' : ''; ?>"><i
                                 class="bi bi-circle"></i><span>Print Approved TA</span></a></li>
@@ -120,13 +125,13 @@ $is_staff = (!$is_admin && !$is_director && !$is_head);
                 <ul id="compliance-nav"
                     class="nav-content collapse <?php echo in_array($current_page, ['travel_reports', 'certificate_appearance']) ? 'show' : ''; ?>"
                     data-bs-parent="#sidebar-nav">
-                     <li><a href="certificate_appearance"
+                    <li><a href="certificate_appearance"
                             class="<?php echo ($current_page == 'certificate_appearance') ? 'active' : ''; ?>"><i
                                 class="bi bi-circle"></i><span>Cert. of Appearance</span></a></li>
                     <li><a href="travel_reports"
                             class="<?php echo ($current_page == 'travel_reports') ? 'active' : ''; ?>"><i
                                 class="bi bi-circle"></i><span>Travel Reports</span></a></li>
-                   
+
                 </ul>
             </li>
         <?php endif; ?>

@@ -260,7 +260,10 @@
                     data.forEach(emp => {
                         const lat = parseFloat(emp.current_lat);
                         const lng = parseFloat(emp.current_lng);
-                        activeIDs.push(emp.ta_id);
+
+                        // Gumawa tayo ng unique ID gamit ang prefix para di mag-clash kung sakaling magkapareho ang ID ng TA at PS
+                        const uniqueMarkerId = emp.travel_type.substring(0, 2) + '-' + emp.id;
+                        activeIDs.push(uniqueMarkerId);
 
                         if (!isNaN(lat) && !isNaN(lng)) {
                             let timeString = "Just now";
@@ -271,6 +274,17 @@
 
                             const initials = getInitials(emp.name);
 
+                            // --- BAGO: Badge Styling base sa Type ---
+                            let typeBadgeHtml = '';
+                            let typeColorClass = '';
+                            if (emp.travel_type === 'Travel Authority') {
+                                typeBadgeHtml = `<span style="font-size: 10px; background: #e0f2fe; border: 1px solid #bae6fd; padding: 3px 7px; border-radius: 4px; color: #0284c7; display: inline-block; margin-top: 5px; font-weight: 600;"><i class="bi bi-briefcase-fill me-1"></i>Travel Auth</span>`;
+                                typeColorClass = 'text-primary';
+                            } else {
+                                typeBadgeHtml = `<span style="font-size: 10px; background: #ffedd5; border: 1px solid #fed7aa; padding: 3px 7px; border-radius: 4px; color: #ea580c; display: inline-block; margin-top: 5px; font-weight: 600;"><i class="bi bi-ticket-detailed-fill me-1"></i>Pass Slip</span>`;
+                                typeColorClass = 'text-warning';
+                            }
+
                             // Popup Content Design
                             const popupContent = `
                                 <div>
@@ -278,7 +292,7 @@
                                         <div class="popup-avatar">${initials}</div>
                                         <div>
                                             <h6 style="margin: 0; font-weight: 700; color: #1e293b; font-size: 15px;">${emp.name}</h6>
-                                            <div style="font-size: 11px; color: #64748b; font-weight: 500; margin-top: 2px;">${emp.memo_no}</div>
+                                            ${typeBadgeHtml}
                                         </div>
                                     </div>
                                     <div class="popup-body">
@@ -294,23 +308,28 @@
                                 </div>
                             `;
 
-                            if (markers[emp.ta_id]) {
-                                markers[emp.ta_id].setLatLng([lat, lng]);
-                                markers[emp.ta_id].setPopupContent(popupContent);
+                            if (markers[uniqueMarkerId]) {
+                                markers[uniqueMarkerId].setLatLng([lat, lng]);
+                                markers[uniqueMarkerId].setPopupContent(popupContent);
                             } else {
-                                markers[emp.ta_id] = L.marker([lat, lng], { icon: redIcon })
+                                markers[uniqueMarkerId] = L.marker([lat, lng], { icon: redIcon })
                                     .addTo(map)
                                     .bindPopup(popupContent, { closeButton: false });
                             }
 
                             // Sidebar Card Design
                             newListHTML += `
-                                <div class="list-group-item list-group-item-action traveler-card" onclick="focusMap(${lat}, ${lng}, ${emp.ta_id})">
+                                <div class="list-group-item list-group-item-action traveler-card" onclick="focusMap(${lat}, ${lng}, '${uniqueMarkerId}')">
                                     <div class="d-flex w-100 justify-content-between align-items-center mb-2">
                                         <h6 class="mb-0 fw-bold" style="color: #1e293b; font-size: 14px;">
                                             ${emp.name}
                                         </h6>
-                                        <span style="font-size: 10px; color: #64748b; font-weight: 600;">${emp.memo_no}</span>
+                                        <div class="d-flex align-items-center">
+                                            <span class="me-2 ${typeColorClass}" style="font-size: 11px; font-weight: bold;">
+                                                ${emp.travel_type === 'Travel Authority' ? 'T.A.' : 'P.S.'}
+                                            </span>
+                                            <span class="badge bg-success rounded-pill pulse-live" style="font-size: 9px;"><i class="bi bi-record-circle me-1"></i>Active</span>
+                                        </div>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-end">
                                         <div class="text-truncate" style="max-width: 65%; font-size: 12px; color: #475569;">
@@ -325,8 +344,9 @@
                         }
                     });
 
-                    for (let id in markers) {
-                        if (!activeIDs.includes(id)) { map.removeLayer(markers[id]); delete markers[id]; }
+                    // Remove old markers
+                    for (let mId in markers) {
+                        if (!activeIDs.includes(mId)) { map.removeLayer(markers[mId]); delete markers[mId]; }
                     }
                     listContainer.innerHTML = newListHTML;
                 })

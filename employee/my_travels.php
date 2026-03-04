@@ -140,7 +140,7 @@ include './../config.php';
               WHERE tp.employee_id = '$employee_id' 
               ORDER BY t.submitted_at DESC";
     $result = mysqli_query($conn, $query);
-    $today = date("Y-m-d"); // Kukunin ang petsa ngayon
+    $today = date("Y-m-d");
     ?>
 
     <main id="main" class="main">
@@ -177,53 +177,68 @@ include './../config.php';
                                     ];
                                     $config = $status_config[$status] ?? $status_config['default'];
 
-                                    // Check kung ngayon ang biyahe
                                     $is_travel_day = ($today >= $row['travel_date'] && $today <= $row['return_date']);
                                     ?>
-                                    <tr>
-                                        <td class="fw-bold text-maroon"><?= $row['memo_no'] ?: '---' ?></td>
-                                        <td>
-                                            <div class="fw-bold"><?= $row['destination'] ?></div>
-                                            <div class="small text-muted"><i
-                                                    class="bi bi-calendar-event me-1"></i><?= date("M d", strtotime($row['travel_date'])) ?>
-                                                - <?= date("M d, Y", strtotime($row['return_date'])) ?></div>
-                                        </td>
-                                        <td>
-                                            <span class="badge <?= $config['badge'] ?> mb-1"><?= $config['label'] ?></span>
-                                            <?php if ($row['is_tracking_active'] == 1): ?>
-                                                <br><span class="badge bg-danger pulse-live"><i class="bi bi-geo-alt"></i> Live
-                                                    Tracking</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td class="text-center">
-
-                                            <?php if ($status == 2 && $is_travel_day): ?>
-                                                <?php if ($row['is_tracking_active'] == 0): ?>
-                                                    <button class="btn btn-sm btn-outline-success rounded-pill px-3 shadow-sm me-1"
-                                                        onclick="startTracking(<?= $row['ta_id'] ?>)">
-                                                        <i class="bi bi-play-circle me-1"></i> Start Travel
-                                                    </button>
-                                                <?php else: ?>
-                                                    <button class="btn btn-sm btn-danger rounded-pill px-3 shadow-sm me-1"
-                                                        onclick="stopTracking(<?= $row['ta_id'] ?>)">
-                                                        <i class="bi bi-stop-circle me-1"></i> End Travel
-                                                    </button>
+                                        <tr>
+                                            <td class="fw-bold text-maroon"><?= $row['memo_no'] ?: '---' ?></td>
+                                            <td>
+                                                <div class="fw-bold"><?= $row['destination'] ?></div>
+                                                <div class="small text-muted"><i
+                                                        class="bi bi-calendar-event me-1"></i><?= date("M d", strtotime($row['travel_date'])) ?>
+                                                    - <?= date("M d, Y", strtotime($row['return_date'])) ?></div>
+                                            </td>
+                                            <td>
+                                                <span class="badge <?= $config['badge'] ?> mb-1"><?= $config['label'] ?></span>
+                                                <?php if ($row['is_tracking_active'] == 1): ?>
+                                                        <br><span class="badge bg-danger pulse-live"><i class="bi bi-geo-alt"></i> Live Tracking</span>
                                                 <?php endif; ?>
-                                            <?php endif; ?>
+                                            </td>
+                                            <td class="text-center">
 
-                                            <?php if ($status == 11): ?>
-                                                <button class="btn btn-sm btn-warning rounded-pill px-3 shadow-sm"
-                                                    onclick='openResubmitModal(<?= json_encode($row, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)'>
-                                                    <i class="bi bi-pencil-square me-1"></i> Fix
-                                                </button>
-                                            <?php else: ?>
-                                                <button class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm"
-                                                    onclick='trackTravel(<?= json_encode($row, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)'>
-                                                    <i class="bi bi-search"></i>
-                                                </button>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
+                                                <?php if ($status == 2 && $is_travel_day): ?>
+                                                        <?php
+                                                        // Get the current step from the database, default to 0 if not set
+                                                        $step = isset($row['tracking_step']) ? (int) $row['tracking_step'] : 0;
+                                                        ?>
+                                                
+                                                        <?php if ($step == 0): ?>
+                                                                <button class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm w-100 mb-1"
+                                                                    onclick="logTravelMilestone(<?= $row['ta_id'] ?>, 1, 'Start Travel')">
+                                                                    <i class="bi bi-geo-alt me-1"></i> Start Travel
+                                                                </button>
+                                                        <?php elseif ($step == 1): ?>
+                                                                <button class="btn btn-sm btn-info rounded-pill px-3 shadow-sm text-white w-100 mb-1"
+                                                                    onclick="logTravelMilestone(<?= $row['ta_id'] ?>, 2, 'Arrived at Destination')">
+                                                                    <i class="bi bi-geo-fill me-1"></i> I'm Here!
+                                                                </button>
+                                                        <?php elseif ($step == 2): ?>
+                                                                <button class="btn btn-sm btn-warning rounded-pill px-3 shadow-sm text-dark w-100 mb-1"
+                                                                    onclick="logTravelMilestone(<?= $row['ta_id'] ?>, 3, 'Leaving Destination')">
+                                                                    <i class="bi bi-sign-turn-left me-1"></i> Leaving Now
+                                                                </button>
+                                                        <?php elseif ($step == 3): ?>
+                                                                <button class="btn btn-sm btn-danger rounded-pill px-3 shadow-sm w-100 mb-1"
+                                                                    onclick="logTravelMilestone(<?= $row['ta_id'] ?>, 4, 'Returned to Office')">
+                                                                    <i class="bi bi-house-check me-1"></i> Returned to Office
+                                                                </button>
+                                                        <?php elseif ($step == 4): ?>
+                                                                <span class="badge bg-secondary rounded-pill px-3 w-100 mb-1"><i class="bi bi-check-all"></i> Travel Finished</span>
+                                                        <?php endif; ?>
+                                                <?php endif; ?>
+
+                                                <?php if ($status == 11): ?>
+                                                        <button class="btn btn-sm btn-warning rounded-pill px-3 shadow-sm"
+                                                            onclick='openResubmitModal(<?= json_encode($row, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)'>
+                                                            <i class="bi bi-pencil-square me-1"></i> Fix
+                                                        </button>
+                                                <?php else: ?>
+                                                        <button class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm"
+                                                            onclick='trackTravel(<?= json_encode($row, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)'>
+                                                            <i class="bi bi-search"></i>
+                                                        </button>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
                                 <?php endwhile; ?>
                             </tbody>
                         </table>
@@ -260,19 +275,16 @@ include './../config.php';
                         <div class="row">
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Travel Date</label>
-                                <input type="date" name="travel_date" id="res_travel_date" class="form-control"
-                                    required>
+                                <input type="date" name="travel_date" id="res_travel_date" class="form-control" required>
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Return Date</label>
-                                <input type="date" name="return_date" id="res_return_date" class="form-control"
-                                    required>
+                                <input type="date" name="return_date" id="res_return_date" class="form-control" required>
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer border-0">
-                        <button type="submit" name="btn_resubmit"
-                            class="btn btn-warning fw-bold px-4 shadow-sm w-100">Update & Send to Head</button>
+                        <button type="submit" name="btn_resubmit" class="btn btn-warning fw-bold px-4 shadow-sm w-100">Update & Send to Head</button>
                     </div>
                 </form>
             </div>
@@ -282,8 +294,7 @@ include './../config.php';
     <div class="modal fade" id="trackingModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
-                <div class="modal-header border-0 p-4 text-white"
-                    style="background: linear-gradient(45deg, #800000, #a00000);">
+                <div class="modal-header border-0 p-4 text-white" style="background: linear-gradient(45deg, #800000, #a00000);">
                     <div class="d-flex align-items-center">
                         <div class="bg-white rounded-circle p-2 me-3 shadow-sm">
                             <i class="bi bi-geo-alt-fill text-maroon fs-4" style="color:#800000;"></i>
@@ -300,13 +311,11 @@ include './../config.php';
                     <div class="p-3 bg-light border-bottom">
                         <div class="row text-center">
                             <div class="col-6 border-end">
-                                <label class="text-muted smallest fw-bold text-uppercase"
-                                    style="font-size:10px;">Destination</label>
+                                <label class="text-muted smallest fw-bold text-uppercase" style="font-size:10px;">Destination</label>
                                 <p id="pv-dest-text" class="fw-bold mb-0 small"></p>
                             </div>
                             <div class="col-6">
-                                <label class="text-muted smallest fw-bold text-uppercase" style="font-size:10px;">Travel
-                                    Date</label>
+                                <label class="text-muted smallest fw-bold text-uppercase" style="font-size:10px;">Travel Date</label>
                                 <p id="pv-date-text" class="fw-bold mb-0 small"></p>
                             </div>
                         </div>
@@ -330,8 +339,7 @@ include './../config.php';
                 </div>
 
                 <div class="modal-footer border-0 p-3 pt-0 text-center">
-                    <button type="button" class="btn btn-light w-100 rounded-pill fw-bold small"
-                        data-bs-dismiss="modal">Close Tracker</button>
+                    <button type="button" class="btn btn-light w-100 rounded-pill fw-bold small" data-bs-dismiss="modal">Close Tracker</button>
                 </div>
             </div>
         </div>
@@ -343,100 +351,60 @@ include './../config.php';
     <?php include '../template/script.php'; ?>
 
     <script>
-        // 1. SAFE PHP INJECTION PARA SA ACTIVE TRACKING
-        const activeTaId = <?php
-        $active_id = "null";
-        // Kukunin ang active TA ng logged in user (safe check)
-        $check_active = mysqli_query($conn, "SELECT t.ta_id FROM ta_tbl t JOIN ta_participants_tbl tp ON t.ta_id = tp.ta_id WHERE tp.employee_id = '$employee_id' AND t.is_tracking_active = 1 LIMIT 1");
-        if ($check_active && mysqli_num_rows($check_active) > 0) {
-            $active_id = mysqli_fetch_assoc($check_active)['ta_id'];
-        }
-        echo $active_id;
-        ?>;
-
-        // 2. BACKGROUND LOCATION SENDER (Gagana lang kung may active travel)
-        if (activeTaId !== null) {
-            setInterval(() => {
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(pos => {
-                        sendLocation(activeTaId, pos.coords.latitude, pos.coords.longitude);
-                    }, err => console.log('Location access issue:', err), { enableHighAccuracy: true });
-                }
-            }, 30000); // 30 seconds interval
-        }
-
-        // 3. CORE BUTTON FUNCTIONS
-        function startTracking(taId) {
+        // Milestone Tracking Logic
+        function logTravelMilestone(taId, stepNumber, actionName) {
             if (!navigator.geolocation) {
                 Swal.fire('Error', 'Your browser does not support location tracking.', 'error');
                 return;
             }
 
             Swal.fire({
-                title: 'Start Official Travel?',
-                text: "Your live location will be shared with the Admin Dashboard.",
+                title: actionName + '?',
+                text: "Your exact location and timestamp will be recorded.",
                 icon: 'info',
                 showCancelButton: true,
-                confirmButtonColor: '#28a745',
-                confirmButtonText: 'Yes, Start Tracking'
+                confirmButtonColor: '#800000',
+                confirmButtonText: 'Yes, Record it!'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    // Update Database (Set to Active 1)
-                    fetch('toggle_tracking.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: 'ta_id=' + taId + '&status=1'
-                    }).then(response => {
-                        if (response.ok) {
-                            // Hihingi ng permission sa browser at kukuha ng unang location
-                            navigator.geolocation.getCurrentPosition(
-                                (pos) => {
-                                    sendLocation(taId, pos.coords.latitude, pos.coords.longitude);
-                                    Swal.fire({ title: 'Tracking Started', icon: 'success', timer: 1500, showConfirmButton: false })
-                                        .then(() => location.reload());
-                                },
-                                (err) => {
-                                    Swal.fire('Location Access Denied', 'Please allow location access in your browser settings to continue.', 'error');
-                                }
-                            );
-                        } else {
-                            Swal.fire('Error', 'Failed to communicate with database.', 'error');
-                        }
-                    }).catch(error => {
-                        console.error('Fetch error:', error);
+                    Swal.fire({ 
+                        title: 'Fetching GPS Data...', 
+                        allowOutsideClick: false, 
+                        didOpen: () => { Swal.showLoading(); }
                     });
+                    
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                            fetch('update_milestone.php', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                body: `ta_id=${taId}&step=${stepNumber}&action_name=${encodeURIComponent(actionName)}&lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if(data.status === 'success') {
+                                    Swal.fire({ 
+                                        title: 'Recorded!', 
+                                        text: actionName + ' timestamp saved.', 
+                                        icon: 'success', 
+                                        timer: 1500, 
+                                        showConfirmButton: false 
+                                    }).then(() => location.reload());
+                                } else {
+                                    Swal.fire('Error', data.message, 'error');
+                                }
+                            });
+                        },
+                        (err) => {
+                            Swal.fire('GPS Error', 'Please enable location services or check your connection.', 'error');
+                        },
+                        { enableHighAccuracy: true, maximumAge: 0 }
+                    );
                 }
             });
         }
 
-        function stopTracking(taId) {
-            Swal.fire({
-                title: 'End Official Travel?',
-                text: "This will stop sharing your location.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#dc3545',
-                confirmButtonText: 'Yes, End Travel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch('toggle_tracking.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: 'ta_id=' + taId + '&status=0'
-                    }).then(() => location.reload());
-                }
-            });
-        }
-
-        function sendLocation(taId, lat, lng) {
-            fetch('update_location.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'ta_id=' + taId + '&lat=' + lat + '&lng=' + lng
-            });
-        }
-
-        // 4. EXISTING MODALS FOR TRACKING AND RESUBMIT
+        // Resubmit Form Handling
         function openResubmitModal(data) {
             document.getElementById('res_ta_id').value = data.ta_id;
             document.getElementById('res_destination').value = data.destination;
@@ -450,6 +418,7 @@ include './../config.php';
             new bootstrap.Modal(document.getElementById('resubmitModal')).show();
         }
 
+        // Timeline Popup Handling
         function trackTravel(data) {
             const fmtFull = (d) => d ? new Date(d).toLocaleString('en-US', {
                 month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'

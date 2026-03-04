@@ -242,7 +242,7 @@ if (isset($_POST['send_reset_link'])) {
 <head>
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>E-TAMS | MarSU Travel Portal</title>
+  <title>E-TAMS | MarSU Travel Portals</title>
   <link href="https://hrmis.marsu.edu.ph/dist/img/marsu_logo.png" rel="icon">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap"
     rel="stylesheet">

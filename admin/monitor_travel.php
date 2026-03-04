@@ -6,7 +6,7 @@
     <?php include '../template/header.php'; ?>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+    <script src="https://unpkg.com/leaflet.marker.slideto@0.2.0/Leaflet.Marker.SlideTo.js"></script>
 </head>
 
 <body>
@@ -309,7 +309,10 @@
                             `;
 
                             if (markers[uniqueMarkerId]) {
-                                markers[uniqueMarkerId].setLatLng([lat, lng]);
+                                markers[uniqueMarkerId].slideTo([lat, lng], {
+                                    duration: 3000,  
+                                    keepAtCenter: false  
+                                });
                                 markers[uniqueMarkerId].setPopupContent(popupContent);
                             } else {
                                 markers[uniqueMarkerId] = L.marker([lat, lng], { icon: redIcon })

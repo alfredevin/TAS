@@ -14,7 +14,7 @@ if (isset($_POST['submit'])) {
     $row = mysqli_fetch_assoc($result);
     if (password_verify($old_password, $row['password'])) {
         if ($new_password === $confirm_new_password) {
-            $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+            $hashed_password = password_hash($new_password, algo: PASSWORD_DEFAULT);
             $update_sql = "UPDATE user_tbl SET password = '$hashed_password' WHERE userid = '$id'";
             if (mysqli_query($conn, $update_sql)) {
                 echo '<script>

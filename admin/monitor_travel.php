@@ -230,6 +230,56 @@
         .custom-scroll::-webkit-scrollbar-thumb:hover {
             background-color: #94a3b8;
         }
+
+        /* Custom Profile Marker Styles */
+        .custom-profile-marker {
+            background: transparent;
+            border: none;
+        }
+
+        .marker-photo-container {
+            width: 45px;
+            height: 45px;
+            background: #fff;
+            border-radius: 50%;
+            border: 3px solid #800000;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .marker-photo-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .marker-initials {
+            background: #800000;
+            color: #fff;
+            font-weight: bold;
+            font-size: 16px;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .marker-pointer {
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 10px solid #800000;
+        }
     </style>
 
     <main id="main" class="main">
@@ -344,12 +394,26 @@
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
             iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
         });
-
-        // 2. GLOBAL VARIABLES
         var markers = {};
-        var markerGroup = L.featureGroup().addTo(map); // Group para sa "Focus All" button
-        var allTravelersData = []; // Para sa Search Filter
+        var markerGroup = L.featureGroup().addTo(map);
+        var allTravelersData = [];
+        var addressCache = {};
+        function createProfileMarker(picUrl, initials) {
+            let htmlContent = picUrl && picUrl !== ''
+                ? `<img src="${picUrl}" onerror="this.style.display='none'">`
+                : `<div class="marker-initials">${initials}</div>`;
 
+            return L.divIcon({
+                className: 'custom-profile-marker',
+                html: `
+            <div class="marker-photo-container">${htmlContent}</div>
+            <div class="marker-pointer"></div>
+        `,
+                iconSize: [45, 55],
+                iconAnchor: [22, 55],
+                popupAnchor: [0, -50]
+            });
+        }
         // 3. UTILITY FUNCTIONS
         function getInitials(name) {
             let initials = name.match(/\b\w/g) || [];
@@ -521,7 +585,7 @@
                                                 <span style="font-size: 10px; font-weight: bold; color: ${emp.tracking_step >= 1 ? '#10b981' : '#94a3b8'}; background: #f8fafc; padding: 2px 6px; border-radius: 4px;">${s1.time}</span>
                                             </div>
                                             <div style="font-size: 10px; color: #64748b; line-height: 1.2;">
-                                                <i class="bi bi-pin-map-fill me-1"></i><span class="async-loc" data-lat="${s1.lat}" data-lng="${s1.lng}">Tap marker to load address...</span>
+                                                <i class="bi bi-pin-map-fill me-1"></i><span class="async-loc" data-lat="${s1.lat}" data-lng="${s1.lng}">Loading address...</span>
                                             </div>
                                         </div>
 
@@ -561,11 +625,15 @@
                                 </div>
                             `;
 
+                            let employeePic = emp.profile_image || '';
+                            let customIcon = createProfileMarker(employeePic, initials);
+
                             if (markers[uniqueMarkerId]) {
                                 markers[uniqueMarkerId].slideTo([lat, lng], { duration: 3000, keepAtCenter: false });
+                                markers[uniqueMarkerId].setIcon(customIcon); // Update in case nagbago
                                 markers[uniqueMarkerId].setPopupContent(popupContent);
                             } else {
-                                markers[uniqueMarkerId] = L.marker([lat, lng], { icon: redIcon })
+                                markers[uniqueMarkerId] = L.marker([lat, lng], { icon: customIcon })
                                     .bindPopup(popupContent, { closeButton: false });
                                 markerGroup.addLayer(markers[uniqueMarkerId]);
                             }
@@ -591,6 +659,7 @@
         }
 
         // --- AUTOMATIC GEOCODING WHEN POPUP OPENS ---
+        // --- AUTOMATIC GEOCODING CACHE LOGIC ---
         map.on('popupopen', async function (e) {
             let popupNode = e.popup._contentNode;
             let locSpans = popupNode.querySelectorAll('.async-loc');
@@ -598,15 +667,26 @@
             for (let span of locSpans) {
                 let lat = span.getAttribute('data-lat');
                 let lng = span.getAttribute('data-lng');
+                let coordKey = `${lat},${lng}`;
 
-                // Fetch address only if lat/lng exists and hasn't been loaded yet
-                if (lat && lng && lat !== 'null' && !span.hasAttribute('data-loaded')) {
-                    span.innerText = "Fetching location...";
-                    let address = await getRealAddress(lat, lng);
-                    span.innerText = address;
-                    span.setAttribute('data-loaded', 'true'); // Mark as loaded so it doesn't fetch again
+                if (lat && lng && lat !== 'null') {
+                    // Kung nasa cache na, instant load
+                    if (addressCache[coordKey]) {
+                        span.innerText = addressCache[coordKey];
+                        span.setAttribute('data-loaded', 'true');
+                    }
+                    // Kung wala pa, mag-fetch sa API
+                    else if (!span.hasAttribute('data-loaded')) {
+                        span.innerHTML = `<span class="spinner-border spinner-border-sm text-maroon" role="status" aria-hidden="true"></span> Translating...`;
+
+                        let address = await getRealAddress(lat, lng);
+                        addressCache[coordKey] = address; // I-save sa cache
+
+                        span.innerText = address;
+                        span.setAttribute('data-loaded', 'true');
+                    }
                 } else if (lat === 'null') {
-                    span.innerText = "Pending action";
+                    span.innerText = "--";
                 }
             }
         });

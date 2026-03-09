@@ -3,10 +3,14 @@ include './../config.php';
 header('Content-Type: application/json');
 
 $query = "
+    -- ==========================================
+    -- 1. KUNIN ANG DATA NG TRAVEL AUTHORITY (TA)
+    -- ==========================================
     SELECT 
         t.ta_id as id, 
-        'Travel Authority' as travel_type, 
+        'TA' as travel_type, 
         CONCAT(e.first_name, ' ', e.last_name) as name, 
+        e.photo, 
         t.destination, 
         t.current_lat, 
         t.current_lng, 
@@ -22,15 +26,22 @@ $query = "
 
     UNION ALL
 
+    -- ==========================================
+    -- 2. KUNIN ANG DATA NG PASS SLIP (PS)
+    -- ==========================================
     SELECT 
         p.ps_id as id, 
-        'Pass Slip' as travel_type, 
+        'PS' as travel_type, 
         CONCAT(e.first_name, ' ', e.last_name) as name, 
+        e.photo, 
         p.destination, 
         p.current_lat, 
         p.current_lng, 
-        0 as tracking_step,
-        NULL as step1_data, NULL as step2_data, NULL as step3_data, NULL as step4_data
+        p.tracking_step,
+        (SELECT CONCAT(latitude, ',', longitude, '|', DATE_FORMAT(logged_at, '%h:%i %p')) FROM ps_tracking_logs_tbl WHERE ps_id = p.ps_id AND step_number = 1 ORDER BY logged_at DESC LIMIT 1) as step1_data,
+        (SELECT CONCAT(latitude, ',', longitude, '|', DATE_FORMAT(logged_at, '%h:%i %p')) FROM ps_tracking_logs_tbl WHERE ps_id = p.ps_id AND step_number = 2 ORDER BY logged_at DESC LIMIT 1) as step2_data,
+        (SELECT CONCAT(latitude, ',', longitude, '|', DATE_FORMAT(logged_at, '%h:%i %p')) FROM ps_tracking_logs_tbl WHERE ps_id = p.ps_id AND step_number = 3 ORDER BY logged_at DESC LIMIT 1) as step3_data,
+        (SELECT CONCAT(latitude, ',', longitude, '|', DATE_FORMAT(logged_at, '%h:%i %p')) FROM ps_tracking_logs_tbl WHERE ps_id = p.ps_id AND step_number = 4 ORDER BY logged_at DESC LIMIT 1) as step4_data
     FROM pass_slip_tbl p
     JOIN employee_tbl e ON p.employee_id = e.employee_id
     WHERE p.is_tracking_active = 1 AND p.current_lat IS NOT NULL
@@ -38,10 +49,12 @@ $query = "
 
 $result = mysqli_query($conn, $query);
 $locations = [];
+
 if ($result) {
     while ($row = mysqli_fetch_assoc($result)) {
         $locations[] = $row;
     }
 }
+
 echo json_encode($locations);
 ?>

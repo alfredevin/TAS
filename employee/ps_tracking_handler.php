@@ -1,75 +1,81 @@
 <?php
-// I-set ang timezone sa Pilipinas para tama ang oras ng Departure at Return
+// I-set ang timezone para sakto ang oras
 date_default_timezone_set('Asia/Manila');
 include './../config.php';
+header('Content-Type: application/json');
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Kunin ang Pass Slip ID at ang Action na gustong gawin
+// Siguraduhing kumpleto ang data na ipinasa
+if (isset($_POST['ps_id']) && isset($_POST['action']) && isset($_POST['lat']) && isset($_POST['lng'])) {
+
     $ps_id = mysqli_real_escape_string($conn, $_POST['ps_id']);
-    $action = $_POST['action'];
+    $action = mysqli_real_escape_string($conn, $_POST['action']);
+    $lat = mysqli_real_escape_string($conn, $_POST['lat']);
+    $lng = mysqli_real_escape_string($conn, $_POST['lng']);
 
-    if ($action === 'start') {
-        // ACTION 1: START TRAVEL & INITIAL LOCATION
-        // Kukunin ang lat at lng na ipinasa mula sa JavaScript
-        $lat = isset($_POST['lat']) ? mysqli_real_escape_string($conn, $_POST['lat']) : NULL;
-        $lng = isset($_POST['lng']) ? mysqli_real_escape_string($conn, $_POST['lng']) : NULL;
+    $step = 0;
+    $action_name = "";
+    $time_column_update = "";
+    $is_tracking_active = 1; // Default ay naka-ON ang live location
 
-        if ($lat && $lng) {
-            // Kung may location data, isave pati location
-            $query = "UPDATE pass_slip_tbl 
-                      SET time_departure = CURRENT_TIME(), 
-                          is_tracking_active = 1,
-                          current_lat = '$lat',
-                          current_lng = '$lng',
-                          location_updated_at = NOW()
-                      WHERE ps_id = '$ps_id'";
-        } else {
-            // Fallback kung oras lang
-            $query = "UPDATE pass_slip_tbl 
-                      SET time_departure = CURRENT_TIME(), 
-                          is_tracking_active = 1 
-                      WHERE ps_id = '$ps_id'";
-        }
-        
-        if(mysqli_query($conn, $query)) {
-            echo "success_start";
-        } else {
-            http_response_code(500); 
-            echo "Error: " . mysqli_error($conn);
-        }
-    } 
-    elseif ($action === 'stop') {
-        // ACTION 2: END TRAVEL
-        $query = "UPDATE pass_slip_tbl 
-                  SET time_return = CURRENT_TIME(), 
-                      is_tracking_active = 0, 
-                      current_lat = NULL, 
-                      current_lng = NULL 
-                  WHERE ps_id = '$ps_id'";
-        
-        if(mysqli_query($conn, $query)) {
-            echo "success_stop";
-        } else {
-            http_response_code(500);
-        }
-    } 
-    elseif ($action === 'location') {
-        // ACTION 3: UPDATE REAL-TIME LOCATION (Background updating)
-        if(isset($_POST['lat']) && isset($_POST['lng'])) {
-            $lat = mysqli_real_escape_string($conn, $_POST['lat']);
-            $lng = mysqli_real_escape_string($conn, $_POST['lng']);
-            
-            $query = "UPDATE pass_slip_tbl 
-                      SET current_lat = '$lat', 
-                          current_lng = '$lng',
-                          location_updated_at = NOW() 
-                      WHERE ps_id = '$ps_id'";
-            mysqli_query($conn, $query);
-            echo "location_updated";
-        }
+    // Tukuyin kung anong step at anong column ang ia-update base sa action
+    if ($action === 'depart') {
+        $step = 1;
+        $action_name = "Departed Campus";
+        $time_column_update = "time_departure = CURRENT_TIME(),";
+    } elseif ($action === 'arrive') {
+        $step = 2;
+        $action_name = "Arrived at Destination";
+        $time_column_update = "time_arrived = CURRENT_TIME(),";
+    } elseif ($action === 'leave_dest') {
+        $step = 3;
+        $action_name = "Left Destination";
+        $time_column_update = "time_leaving = CURRENT_TIME(),";
+    } elseif ($action === 'return') {
+        $step = 4;
+        $action_name = "Returned to Campus";
+        $time_column_update = "time_return = CURRENT_TIME(),";
+        $is_tracking_active = 0; // Kapag nakabalik na, patayin na ang live tracking map
     }
+
+    // KUNG ANG REQUEST AY ISANG STEP BUTTON (1, 2, 3, o 4)
+    if ($step > 0) {
+        
+        // 1. I-RECORD SA MILESTONE / LOGS TABLE (Para sa History)
+        $insert_log = "INSERT INTO ps_tracking_logs_tbl (ps_id, step_number, action_name, latitude, longitude) 
+                       VALUES ('$ps_id', $step, '$action_name', '$lat', '$lng')";
+        mysqli_query($conn, $insert_log);
+
+        // 2. I-UPDATE ANG MAIN TABLE (Para sa UI at Admin Map)
+        $update_main = "UPDATE pass_slip_tbl 
+                        SET $time_column_update
+                            tracking_step = $step,
+                            is_tracking_active = $is_tracking_active,
+                            current_lat = '$lat',
+                            current_lng = '$lng',
+                            location_updated_at = NOW()
+                        WHERE ps_id = '$ps_id'";
+
+        if (mysqli_query($conn, $update_main)) {
+            echo json_encode(['status' => 'success', 'message' => $action_name . ' recorded successfully.']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Main update error: ' . mysqli_error($conn)]);
+        }
+    } 
+    // KUNG ANG REQUEST AY BACKGROUND LOCATION UPDATE LANG (Walang pinindot)
+    elseif ($action === 'location') {
+        $update_loc = "UPDATE pass_slip_tbl 
+                       SET current_lat = '$lat', current_lng = '$lng', location_updated_at = NOW() 
+                       WHERE ps_id = '$ps_id'";
+        if (mysqli_query($conn, $update_loc)) {
+            echo json_encode(['status' => 'success', 'message' => 'Live location updated.']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Location update failed.']);
+        }
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Invalid action type.']);
+    }
+
 } else {
-    http_response_code(403);
-    echo "Forbidden";
+    echo json_encode(['status' => 'error', 'message' => 'Incomplete data provided.']);
 }
 ?>

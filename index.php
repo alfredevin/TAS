@@ -260,7 +260,7 @@ if (isset($_POST['send_reset_link'])) {
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(128, 0, 0, 0.4)),
-        url('https://scontent-mnl1-2.xx.fbcdn.net/v/t39.30808-6/524896578_122177118542545430_58775251789529293_n.jpg?_nc_cat=100&ccb=1-7&_nc_sid=7b2446&_nc_eui2=AeE37Uv0tRHsVfkLfoYr8T4ygGmr1_SwJByAaavX9LAkHFgdYE0WZreDZ-MxTbQwsVPnfxeYnjEnc2dgAeYFmvpo&_nc_ohc=lbyVqurAOb4Q7kNvwFIVN1W&_nc_oc=Adl3dikyUm3jr7EQKPeZheP6qWuZ7GPTodZ03LbThggMc5a29bJxm-zKyflFJBLE6LeUmZqGi_iGxw4WoOhRWUPe&_nc_zt=23&_nc_ht=scontent-mnl1-2.xx&_nc_gid=4yeOzKVQxoe9I0p2_ZBEKw&oh=00_AfshMnal_pUbSqE25QmAyWC1P2H_P4R8n01Wj4mIfnJXtw&oe=69A1C1E9');
+        url('./img/bg.jpg');
       /* Modern Airplane/Travel BG */
       background-size: cover;
       background-position: center;

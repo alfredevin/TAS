@@ -23,8 +23,11 @@ include './../config.php';
     $employee_id = $_SESSION['employee_id'];
     $today = date("Y-m-d");
 
+    // Dynamic Greeting Logic
+    $hour = date('H');
+    $greeting = ($hour < 12) ? 'Good morning' : (($hour < 17) ? 'Good afternoon' : 'Good evening');
+
     // 1. Kunin ang mga Stats para sa Chart at Cards
-// TAs
     $ta_q = mysqli_query($conn, "SELECT status, COUNT(*) as count FROM ta_tbl t JOIN ta_participants_tbl tp ON t.ta_id = tp.ta_id WHERE tp.employee_id = '$employee_id' GROUP BY status");
     $ta_stats = ['pending' => 0, 'approved' => 0, 'declined' => 0];
     while ($r = mysqli_fetch_assoc($ta_q)) {
@@ -36,7 +39,6 @@ include './../config.php';
             $ta_stats['declined'] += $r['count'];
     }
 
-    // Pass Slips
     $ps_q = mysqli_query($conn, "SELECT status, COUNT(*) as count FROM pass_slip_tbl WHERE employee_id = '$employee_id' GROUP BY status");
     $ps_stats = ['pending' => 0, 'approved' => 0, 'declined' => 0];
     while ($r = mysqli_fetch_assoc($ps_q)) {
@@ -50,6 +52,7 @@ include './../config.php';
 
     $total_approved = $ta_stats['approved'] + $ps_stats['approved'];
     $total_pending = $ta_stats['pending'] + $ps_stats['pending'];
+    $total_declined = $ta_stats['declined'] + $ps_stats['declined'];
 
     // 2. CHECK FOR ACTIVE TRAVEL TODAY (TA)
     $active_ta_query = mysqli_query($conn, "
@@ -78,7 +81,7 @@ include './../config.php';
         $active_travel = mysqli_fetch_assoc($active_ps_query);
     }
 
-    // 4. KUNIN ANG RECENT HISTORY (TA & PS Combined)
+    // 4. KUNIN ANG RECENT HISTORY
     $recent_history_query = mysqli_query($conn, "
     (SELECT 'Travel Authority' as type, destination, travel_date as t_date, status, submitted_at FROM ta_tbl t JOIN ta_participants_tbl tp ON t.ta_id = tp.ta_id WHERE tp.employee_id = '$employee_id')
     UNION ALL
@@ -87,92 +90,127 @@ include './../config.php';
 ");
     ?>
     <style>
-        /* Aura & Professional Dashboard Theme */
-        .dash-header {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            border-radius: 24px;
-            padding: 30px;
-            color: white;
-            box-shadow: 0 10px 30px rgba(30, 60, 114, 0.2);
-            position: relative;
-            overflow: hidden;
+        :root {
+            --primary-maroon: #800000;
+            --gradient-maroon: linear-gradient(135deg, #800000 0%, #b91c1c 100%);
+            --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
         }
 
-        .dash-header::after {
+        /* Premium Welcome Banner */
+        .welcome-banner {
+            background: var(--gradient-maroon);
+            border-radius: 24px;
+            padding: 35px 30px;
+            color: white;
+            box-shadow: 0 15px 35px rgba(128, 0, 36, 0.2);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        /* Abstract shapes for banner */
+        .welcome-banner::before {
             content: '';
             position: absolute;
-            top: -50px;
-            right: -50px;
-            width: 200px;
-            height: 200px;
+            top: -30px;
+            right: -20px;
+            width: 150px;
+            height: 150px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+        }
+
+        .welcome-banner::after {
+            content: '';
+            position: absolute;
+            bottom: -50px;
+            right: 80px;
+            width: 100px;
+            height: 100px;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 50%;
         }
 
-        .dash-header h2 {
+        .welcome-title {
             font-weight: 800;
+            font-size: 1.8rem;
             letter-spacing: -0.5px;
+            z-index: 1;
+            position: relative;
         }
 
-        /* Quick Stat Cards */
-        .stat-card {
+        .welcome-subtitle {
+            font-size: 0.95rem;
+            opacity: 0.9;
+            z-index: 1;
+            position: relative;
+        }
+
+        /* Sleek Glass Cards */
+        .premium-card {
             background: #fff;
-            border-radius: 20px;
-            border: none;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.03);
-            transition: all 0.3s;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: var(--card-shadow);
+            padding: 25px;
+            height: 100%;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .premium-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.06);
+        }
+
+        .card-heading {
+            font-size: 15px;
+            font-weight: 800;
+            color: #1e293b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
             display: flex;
             align-items: center;
-            padding: 20px;
-            height: 100%;
         }
 
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.06);
+        .card-heading i {
+            font-size: 18px;
+            margin-right: 10px;
         }
 
-        .stat-icon {
-            width: 55px;
-            height: 55px;
-            border-radius: 16px;
+        /* Modern Stat Item */
+        .stat-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-icon-box {
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 22px;
             margin-right: 15px;
             flex-shrink: 0;
         }
 
-        /* Modern Container Cards */
-        .glass-card {
-            background: #fff;
-            border-radius: 24px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
-            border: 1px solid #edf2f7;
-            height: 100%;
-        }
-
-        .card-title-custom {
-            font-size: 16px;
-            font-weight: 800;
-            color: #1e293b;
-            margin-bottom: 20px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        /* Interactive Active Travel Highlight */
-        .active-travel-box {
-            border: 2px solid #10b981;
+        /* Active Tracker Widget */
+        .active-tracker-container {
             border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 15px 35px rgba(16, 185, 129, 0.15);
-            background: #fff;
+            border: 2px solid #10b981;
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.15);
         }
 
-        .active-header {
+        .tracker-header {
             background: #10b981;
             color: white;
             padding: 15px 20px;
@@ -181,131 +219,72 @@ include './../config.php';
             align-items: center;
         }
 
-        /* INTERACTIVE MAP CONTAINER STYLES */
-        .mini-map-wrapper {
-            position: relative;
-            height: 280px;
+        .map-box {
+            height: 260px;
             width: 100%;
             background: #e2e8f0;
-            overflow: hidden;
+            position: relative;
         }
 
-        #miniMap {
+        #liveMap {
             height: 100%;
             width: 100%;
             z-index: 1;
         }
 
-        /* Floating Recenter Button */
-        .btn-recenter {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            z-index: 400;
-            background: rgba(255, 255, 255, 0.95);
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #1e3c72;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-            font-size: 18px;
-        }
-
-        .btn-recenter:active {
-            transform: scale(0.9);
-        }
-
-        /* Glassmorphism Floating Address */
-        .floating-address {
+        /* Frosted Glass Address Overlay */
+        .glass-address {
             position: absolute;
             bottom: 15px;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 400;
             background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(8px);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             padding: 8px 18px;
             border-radius: 50px;
-            font-size: 12px;
-            font-weight: 800;
+            font-size: 11px;
+            font-weight: 700;
             color: #1e293b;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.5);
             display: flex;
             align-items: center;
             white-space: nowrap;
-            border: 1px solid rgba(255, 255, 255, 0.5);
+            z-index: 10;
             max-width: 90%;
-            overflow: hidden;
         }
 
-        /* Pulse Radar Map Marker */
-        .radar-marker {
-            width: 20px;
-            height: 20px;
-            background: #10b981;
-            border-radius: 50%;
-            border: 3px solid #fff;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-            position: relative;
-        }
-
-        .radar-marker::after {
-            content: '';
-            position: absolute;
-            top: -10px;
-            left: -10px;
-            right: -10px;
-            bottom: -10px;
-            border-radius: 50%;
-            border: 2px solid #10b981;
-            animation: radarPulse 2s linear infinite;
-            opacity: 0;
-        }
-
-        @keyframes radarPulse {
-            0% {
-                transform: scale(0.5);
-                opacity: 1;
-                border-width: 3px;
-            }
-
-            100% {
-                transform: scale(2);
-                opacity: 0;
-                border-width: 0px;
-            }
-        }
-
-        /* Action Buttons */
-        .btn-update-loc {
+        /* Action Button */
+        .btn-action-giant {
             border-radius: 16px;
             font-weight: 800;
-            padding: 15px;
-            font-size: 15px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-            transition: 0.2s;
+            padding: 18px;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
 
-        .btn-update-loc:active {
-            transform: scale(0.96);
+        .btn-action-giant:active {
+            transform: scale(0.97);
         }
 
-        .pulse-indicator {
+        /* Pulse Animations */
+        .live-dot {
             width: 12px;
             height: 12px;
             background: #fff;
             border-radius: 50%;
             box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3);
-            animation: pulseWhite 2s infinite;
+            animation: pulseLive 2s infinite;
         }
 
-        @keyframes pulseWhite {
+        @keyframes pulseLive {
             0% {
                 box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.6);
             }
@@ -319,126 +298,135 @@ include './../config.php';
             }
         }
 
-        /* Recent History Timeline */
-        .recent-timeline {
+        .radar-pin {
+            width: 22px;
+            height: 22px;
+            background: #10b981;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .radar-pin::after {
+            content: '';
+            position: absolute;
+            top: -12px;
+            left: -12px;
+            right: -12px;
+            bottom: -12px;
+            border-radius: 50%;
+            border: 2px solid #10b981;
+            animation: radarWave 2s linear infinite;
+            opacity: 0;
+        }
+
+        @keyframes radarWave {
+            0% {
+                transform: scale(0.5);
+                opacity: 1;
+                border-width: 3px;
+            }
+
+            100% {
+                transform: scale(2);
+                opacity: 0;
+                border-width: 0px;
+            }
+        }
+
+        /* Empty State */
+        .empty-state-box {
+            text-align: center;
+            padding: 40px 20px;
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            border-radius: 20px;
+        }
+
+        .empty-icon-wrapper {
+            width: 80px;
+            height: 80px;
+            background: #fff1f2;
+            color: var(--primary-maroon);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 35px;
+            margin: 0 auto 20px auto;
+            box-shadow: 0 5px 15px rgba(128, 0, 36, 0.1);
+        }
+
+        /* Timeline */
+        .timeline-wrapper {
             border-left: 2px solid #e2e8f0;
-            margin-left: 10px;
+            margin-left: 15px;
             padding-left: 20px;
         }
 
-        .timeline-item {
+        .tl-item {
             position: relative;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
 
-        .timeline-item:last-child {
+        .tl-item:last-child {
             margin-bottom: 0;
         }
 
-        .timeline-marker {
+        .tl-dot {
             position: absolute;
             left: -27px;
-            top: 0;
+            top: 2px;
             width: 12px;
             height: 12px;
             border-radius: 50%;
             background: #fff;
-            border: 3px solid #3b82f6;
+            border: 3px solid #cbd5e1;
         }
 
-        .timeline-date {
-            font-size: 11px;
-            font-weight: 700;
+        .tl-date {
+            font-size: 10px;
+            font-weight: 800;
             color: #94a3b8;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+            display: block;
         }
 
-        .timeline-content {
+        .tl-title {
             font-size: 14px;
             font-weight: 700;
             color: #1e293b;
-            line-height: 1.3;
+            line-height: 1.2;
+            margin-bottom: 3px;
         }
 
-        .timeline-desc {
+        .tl-subtitle {
             font-size: 12px;
             color: #64748b;
+            font-weight: 500;
         }
     </style>
 
     <main id="main" class="main">
         <section class="section dashboard">
 
-            <div class="dash-header mb-4">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h2 class="m-0">Dashboard Overview</h2>
-                        <p class="text-white-50 m-0 mt-1"><i class="bi bi-clock me-1"></i> Today is
-                            <?= date('l, F d, Y') ?>
-                        </p>
-                    </div>
-                    <div class="d-none d-md-block">
-                        <a href="request_ta"
-                            class="btn btn-light rounded-pill fw-bold text-primary px-4 shadow-sm"><i
-                                class="bi bi-plus-lg me-1"></i> New Request</a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-4 mb-4">
-                <div class="col-xl-7 col-lg-12">
-                    <div class="row g-3">
-                        <div class="col-sm-6 col-12">
-                            <div class="stat-card">
-                                <div class="stat-icon bg-success bg-opacity-10 text-success"><i
-                                        class="bi bi-check-circle-fill"></i></div>
-                                <div>
-                                    <span class="text-muted small fw-bold text-uppercase"
-                                        style="letter-spacing: 1px;">Approved Travels</span>
-                                    <h3 class="fw-bolder m-0 text-dark"><?= $total_approved ?></h3>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-sm-6 col-12">
-                            <div class="stat-card">
-                                <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i
-                                        class="bi bi-hourglass-split"></i></div>
-                                <div>
-                                    <span class="text-muted small fw-bold text-uppercase"
-                                        style="letter-spacing: 1px;">Pending Approval</span>
-                                    <h3 class="fw-bolder m-0 text-dark"><?= $total_pending ?></h3>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="d-flex d-md-none gap-2 mt-3">
-                        <a href="create_ta.php" class="btn btn-primary w-100 rounded-pill fw-bold shadow-sm"><i
-                                class="bi bi-briefcase me-1"></i> File TA</a>
-                        <a href="pass_slip.php"
-                            class="btn btn-outline-primary w-100 rounded-pill fw-bold bg-white shadow-sm"><i
-                                class="bi bi-ticket me-1"></i> Pass Slip</a>
-                    </div>
-                </div>
-
-                <div class="col-xl-5 col-lg-12">
-                    <div class="glass-card d-flex flex-column">
-                        <h6 class="card-title-custom"><i class="bi bi-pie-chart-fill text-primary me-2"></i>My Request
-                            Analytics</h6>
-                        <div class="flex-grow-1" style="position: relative; height: 180px;">
-                            <canvas id="travelChart"></canvas>
-                        </div>
-                    </div>
-                </div>
+            <div class="welcome-banner">
+                <h2 class="welcome-title"><?= $greeting ?>, <?= explode(' ', $_SESSION['fullname'] ?? 'User')[0] ?>! 👋
+                </h2>
+                <p class="welcome-subtitle mb-0"><i class="bi bi-calendar-event me-1"></i> Today is
+                    <?= date('l, F d, Y') ?>
+                </p>
             </div>
 
             <div class="row g-4">
 
                 <div class="col-xl-7 col-lg-12">
-                    <div class="glass-card p-0 overflow-hidden border-0">
-                        <div class="p-4 pb-3">
-                            <h6 class="card-title-custom m-0"><i class="bi bi-broadcast me-2 text-danger"></i>Live
-                                Action Center</h6>
+                    <div class="premium-card p-0 overflow-hidden border-0">
+                        <div class="p-4 pb-0">
+                            <h6 class="card-heading"><i class="bi bi-broadcast text-danger"></i> Live Action Center</h6>
                         </div>
 
                         <?php if ($active_travel):
@@ -448,98 +436,138 @@ include './../config.php';
                             $destination = $active_travel['destination'];
                             $handler_url = $is_ta ? 'update_milestone.php' : 'ps_tracking_handler.php';
                             ?>
-                            <div class="active-travel-box m-3 mt-0 border-0 shadow-lg">
-                                <div class="active-header">
+                            <div class="active-tracker-container m-4 mt-2">
+                                <div class="tracker-header">
                                     <div>
-                                        <h6 class="m-0 fw-bolder" style="font-size: 14px; letter-spacing: 0.5px;">
+                                        <h6 class="m-0 fw-bolder" style="font-size: 13px; letter-spacing: 0.5px;">
                                             <?= $is_ta ? 'TRAVEL AUTHORITY' : 'PASS SLIP' ?> ACTIVE
                                         </h6>
-                                        <small style="opacity: 0.9;"><i class="bi bi-pin-map-fill me-1"></i>Target:
-                                            <?= $destination ?></small>
+                                        <div class="small mt-1" style="opacity: 0.9; font-weight: 600;"><i
+                                                class="bi bi-pin-map-fill me-1"></i><?= $destination ?></div>
                                     </div>
-                                    <div class="pulse-indicator"></div>
+                                    <div class="live-dot"></div>
                                 </div>
 
-                                <div class="mini-map-wrapper">
-                                    <div id="miniMap"></div>
-
-                                    <button class="btn-recenter" onclick="recenterMap()" title="Recenter to my location">
-                                        <i class="bi bi-crosshair"></i>
+                                <div class="map-box">
+                                    <div id="liveMap"></div>
+                                    <button class="btn-recenter" onclick="recenterMap()"
+                                        style="position: absolute; top:10px; right:10px; z-index:400; background:white; border:none; border-radius:50%; width:36px; height:36px; box-shadow:0 2px 5px rgba(0,0,0,0.2);">
+                                        <i class="bi bi-crosshair text-primary"></i>
                                     </button>
-
-                                    <div class="floating-address">
-                                        <i class="bi bi-geo-alt-fill text-danger me-2 fs-6"></i>
-                                        <span id="current-address" class="text-truncate">Acquiring signal...</span>
+                                    <div class="glass-address text-truncate">
+                                        <i class="bi bi-geo-alt-fill text-danger me-2"></i> <span
+                                            id="current-address">Detecting Location...</span>
                                     </div>
                                 </div>
 
-                                <div class="p-4 text-center" style="background: #f8fafc; border-top: 1px solid #e2e8f0;">
-                                    <p class="text-muted small fw-bold mb-3 text-uppercase" style="letter-spacing: 1px;">
-                                        Update Your Travel Status</p>
-
+                                <div class="p-4" style="background: #f8fafc;">
                                     <?php if ($step == 0): ?>
-                                        <button class="btn btn-primary w-100 btn-update-loc"
-                                            onclick="logAction(<?= $travel_id ?>, 1, 'depart', '<?= $handler_url ?>', '<?= $active_travel['travel_type'] ?>')"><i
-                                                class="bi bi-box-arrow-right me-2 fs-5"></i> Log Departure from Campus</button>
+                                        <button class="btn btn-primary w-100 btn-action-giant shadow-sm"
+                                            onclick="logAction(<?= $travel_id ?>, 1, 'depart', '<?= $handler_url ?>', '<?= $active_travel['travel_type'] ?>')">
+                                            <i class="bi bi-box-arrow-right"></i> Log Departure
+                                        </button>
                                     <?php elseif ($step == 1): ?>
-                                        <button class="btn btn-success w-100 btn-update-loc"
-                                            onclick="logAction(<?= $travel_id ?>, 2, 'arrive', '<?= $handler_url ?>', '<?= $active_travel['travel_type'] ?>')"><i
-                                                class="bi bi-geo-alt-fill me-2 fs-5"></i> I Have Arrived at Destination</button>
+                                        <button class="btn btn-success w-100 btn-action-giant shadow-sm"
+                                            onclick="logAction(<?= $travel_id ?>, 2, 'arrive', '<?= $handler_url ?>', '<?= $active_travel['travel_type'] ?>')">
+                                            <i class="bi bi-geo-alt-fill"></i> Arrived at Target
+                                        </button>
                                     <?php elseif ($step == 2): ?>
-                                        <button class="btn btn-warning text-dark w-100 btn-update-loc"
-                                            onclick="logAction(<?= $travel_id ?>, 3, 'leave_dest', '<?= $handler_url ?>', '<?= $active_travel['travel_type'] ?>')"><i
-                                                class="bi bi-sign-turn-left-fill me-2 fs-5"></i> Leaving Destination</button>
+                                        <button class="btn btn-warning w-100 btn-action-giant shadow-sm text-dark"
+                                            onclick="logAction(<?= $travel_id ?>, 3, 'leave_dest', '<?= $handler_url ?>', '<?= $active_travel['travel_type'] ?>')">
+                                            <i class="bi bi-sign-turn-left-fill"></i> Leaving Target
+                                        </button>
                                     <?php elseif ($step == 3): ?>
-                                        <button class="btn btn-danger w-100 btn-update-loc"
-                                            onclick="logAction(<?= $travel_id ?>, 4, 'return', '<?= $handler_url ?>', '<?= $active_travel['travel_type'] ?>')"><i
-                                                class="bi bi-house-check-fill me-2 fs-5"></i> Returned to Campus</button>
+                                        <button class="btn btn-danger w-100 btn-action-giant shadow-sm"
+                                            onclick="logAction(<?= $travel_id ?>, 4, 'return', '<?= $handler_url ?>', '<?= $active_travel['travel_type'] ?>')">
+                                            <i class="bi bi-house-check-fill"></i> Returned to Campus
+                                        </button>
                                     <?php endif; ?>
                                 </div>
                             </div>
                         <?php else: ?>
-                            <div class="text-center py-5 m-3 mt-0 border border-dashed rounded-4"
-                                style="border-color: #cbd5e1 !important; background: #f8fafc;">
-                                <i class="bi bi-cup-hot text-muted" style="font-size: 3.5rem;"></i>
-                                <h5 class="mt-3 fw-bold text-secondary">No Travel Scheduled Today</h5>
-                                <p class="text-muted small px-4">Your calendar is clear. You are currently stationed at the
-                                    office.</p>
+                            <div class="empty-state-box m-4 mt-2">
+                                <div class="empty-icon-wrapper">
+                                    <i class="bi bi-building-check"></i>
+                                </div>
+                                <h5 class="fw-bolder text-dark mb-2">You are at the Office</h5>
+                                <p class="text-muted small px-3 mb-4">No travels scheduled for today. Need to step out for
+                                    official business?</p>
+                                <div class="d-flex justify-content-center gap-2">
+                                    <a href="request_ta.php" class="btn btn-primary rounded-pill fw-bold px-4 shadow-sm"><i
+                                            class="bi bi-briefcase me-1"></i> File TA</a>
+                                    <a href="pass_slip.php"
+                                        class="btn btn-outline-primary rounded-pill fw-bold px-4 bg-white"><i
+                                            class="bi bi-ticket me-1"></i> Pass Slip</a>
+                                </div>
                             </div>
                         <?php endif; ?>
                     </div>
                 </div>
 
-                <div class="col-xl-5 col-lg-12">
-                    <div class="glass-card">
+                <div class="col-xl-5 col-lg-12 d-flex flex-column gap-4">
+
+                    <div class="premium-card">
+                        <h6 class="card-heading"><i class="bi bi-pie-chart-fill text-primary"></i> Travel Overview</h6>
+
+                        <div class="row align-items-center">
+                            <div class="col-6">
+                                <div class="stat-item">
+                                    <div class="stat-icon-box bg-success bg-opacity-10 text-success"><i
+                                            class="bi bi-check-circle-fill"></i></div>
+                                    <div>
+                                        <div class="fw-bolder text-dark fs-4 lh-1"><?= $total_approved ?></div>
+                                        <div class="text-muted small fw-bold text-uppercase mt-1"
+                                            style="font-size:9px;">Approved</div>
+                                    </div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-icon-box bg-warning bg-opacity-10 text-warning"><i
+                                            class="bi bi-hourglass-split"></i></div>
+                                    <div>
+                                        <div class="fw-bolder text-dark fs-4 lh-1"><?= $total_pending ?></div>
+                                        <div class="text-muted small fw-bold text-uppercase mt-1"
+                                            style="font-size:9px;">Pending</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 position-relative" style="height: 140px;">
+                                <canvas id="travelChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="premium-card">
                         <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h6 class="card-title-custom m-0"><i
-                                    class="bi bi-clock-history text-secondary me-2"></i>Recent Activity</h6>
-                            <a href="my_travels.php" class="text-primary small fw-bold text-decoration-none">View
-                                All</a>
+                            <h6 class="card-heading m-0"><i class="bi bi-clock-history text-secondary"></i> Recent Logs
+                            </h6>
+                            <a href="my_travels.php" class="text-primary small fw-bold text-decoration-none">See All</a>
                         </div>
 
-                        <div class="recent-timeline">
+                        <div class="timeline-wrapper">
                             <?php if (mysqli_num_rows($recent_history_query) > 0): ?>
                                 <?php while ($hist = mysqli_fetch_assoc($recent_history_query)):
-                                    $hist_status = (int) $hist['status'];
-                                    $badge_color = ($hist_status == 2 || $hist_status == 4 || $hist_status == 1) ? 'text-success' : (($hist_status == 0) ? 'text-warning' : 'text-danger');
-                                    $icon_color = ($hist['type'] == 'Pass Slip') ? '#f59e0b' : '#3b82f6';
+                                    $status = (int) $hist['status'];
+                                    $is_success = ($status == 2 || $status == 4 || $status == 1);
+                                    $borderColor = $is_success ? '#10b981' : ($status == 0 ? '#f59e0b' : '#ef4444');
                                     ?>
-                                    <div class="timeline-item">
-                                        <div class="timeline-marker" style="border-color: <?= $icon_color ?>;"></div>
-                                        <div class="timeline-date"><?= date('M d, Y', strtotime($hist['submitted_at'])) ?></div>
-                                        <div class="timeline-content"><?= $hist['destination'] ?></div>
-                                        <div class="timeline-desc">
-                                            <span class="badge bg-light text-secondary border me-1"><?= $hist['type'] ?></span>
-                                            For: <span class="fw-bold"><?= date('M d', strtotime($hist['t_date'])) ?></span> •
-                                            <i class="bi bi-circle-fill <?= $badge_color ?>" style="font-size: 8px;"></i>
+                                    <div class="tl-item">
+                                        <div class="tl-dot" style="border-color: <?= $borderColor ?>;"></div>
+                                        <span class="tl-date"><?= date('M d, Y', strtotime($hist['submitted_at'])) ?></span>
+                                        <div class="tl-title text-truncate" title="<?= $hist['destination'] ?>">
+                                            <?= $hist['destination'] ?>
+                                        </div>
+                                        <div class="tl-subtitle">
+                                            <span class="badge bg-light text-dark border me-1"><?= $hist['type'] ?></span>
+                                            <?= $is_success ? '<span class="text-success fw-bold"><i class="bi bi-check"></i> Approved</span>' : ($status == 0 ? '<span class="text-warning fw-bold"><i class="bi bi-hourglass"></i> Pending</span>' : '<span class="text-danger fw-bold"><i class="bi bi-x"></i> Declined</span>') ?>
                                         </div>
                                     </div>
                                 <?php endwhile; ?>
                             <?php else: ?>
-                                <p class="text-muted small fst-italic">No past travel requests found.</p>
+                                <div class="text-muted small fst-italic">No past travel history available.</div>
                             <?php endif; ?>
                         </div>
                     </div>
+
                 </div>
 
             </div>
@@ -557,18 +585,15 @@ include './../config.php';
                 data: {
                     labels: ['Approved', 'Pending', 'Declined'],
                     datasets: [{
-                        data: [<?= $total_approved ?>, <?= $total_pending ?>, <?= ($ta_stats['declined'] + $ps_stats['declined']) ?>],
+                        data: [<?= $total_approved ?>, <?= $total_pending ?>, <?= $total_declined ?>],
                         backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
                         borderWidth: 0,
                         hoverOffset: 5
                     }]
                 },
                 options: {
-                    responsive: true, maintainAspectRatio: false,
-                    cutout: '75%',
-                    plugins: {
-                        legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 10, font: { size: 11, family: 'Inter' } } }
-                    }
+                    responsive: true, maintainAspectRatio: false, cutout: '75%',
+                    plugins: { legend: { display: false } } // Hidden legend for cleaner look, data is beside it
                 }
             });
         });
@@ -576,74 +601,60 @@ include './../config.php';
 
     <?php if ($active_travel): ?>
         <script>
-            // Zoom control hidden for cleaner mobile look
-            var map = L.map('miniMap', { zoomControl: false, attributionControl: false }).setView([13.3858, 121.9563], 15);
+            var map = L.map('liveMap', { zoomControl: false, attributionControl: false }).setView([13.3858, 121.9563], 15);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
 
             var userMarker;
-            var currentUserLat = null;
-            var currentUserLng = null;
+            var currentLat = null, currentLng = null;
 
-            // Modern Glowing Radar Marker
             var radarIcon = L.divIcon({
-                className: 'custom-radar',
-                html: `<div class="radar-marker"></div>`,
-                iconSize: [20, 20], iconAnchor: [10, 10]
+                className: 'custom-radar', html: `<div class="radar-pin"></div>`, iconSize: [22, 22], iconAnchor: [11, 11]
             });
 
-            // Function para i-center ang map kapag pinindot ang Recenter Button
             function recenterMap() {
-                if (currentUserLat && currentUserLng) {
-                    map.flyTo([currentUserLat, currentUserLng], 17, { animate: true, duration: 1 });
-                } else {
-                    Swal.fire({ title: 'Locating...', text: 'Still acquiring your GPS signal.', timer: 1500, showConfirmButton: false, icon: 'info' });
-                }
+                if (currentLat && currentLng) map.flyTo([currentLat, currentLng], 17, { animate: true });
             }
 
-            // Automatic Background Update
-            function updateMiniMap() {
+            function updateMapLocation() {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(async pos => {
-                        currentUserLat = pos.coords.latitude;
-                        currentUserLng = pos.coords.longitude;
+                        currentLat = pos.coords.latitude; currentLng = pos.coords.longitude;
 
                         if (!userMarker) {
-                            userMarker = L.marker([currentUserLat, currentUserLng], { icon: radarIcon }).addTo(map);
-                            map.setView([currentUserLat, currentUserLng], 16, { animate: true });
+                            userMarker = L.marker([currentLat, currentLng], { icon: radarIcon }).addTo(map);
+                            map.setView([currentLat, currentLng], 16);
                         } else {
-                            userMarker.setLatLng([currentUserLat, currentUserLng]);
+                            userMarker.setLatLng([currentLat, currentLng]);
                         }
 
-                        // Reverse Geocoding para sa Address
                         try {
-                            let res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentUserLat}&lon=${currentUserLng}&zoom=16`);
+                            let res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLng}&zoom=16`);
                             let data = await res.json();
-                            let address = data.address.road || data.address.village || data.address.town || data.address.city || "Unknown Street";
-                            document.getElementById('current-address').innerText = address;
+                            document.getElementById('current-address').innerText = data.address.road || data.address.village || data.address.town || "Location Acquired";
                         } catch (e) {
-                            document.getElementById('current-address').innerText = "GPS Fixed - Locating Name...";
+                            document.getElementById('current-address').innerText = "GPS Fixed";
                         }
                     });
                 }
             }
 
-            updateMiniMap();
-            setInterval(updateMiniMap, 8000); // 8 seconds refresh
+            updateMapLocation();
+            setInterval(updateMapLocation, 8000);
 
-            // UNIVERSAL SUBMIT LOGGER
+            // SWEETALERT ACTION LOGGER
             function logAction(id, stepNum, actionString, urlHandler, type) {
-                if (!navigator.geolocation) { Swal.fire('Error', 'No GPS support on this device.', 'error'); return; }
+                if (!navigator.geolocation) { Swal.fire('Error', 'GPS not supported on your device.', 'error'); return; }
 
-                let btnNames = ['Log Departure', 'Log Arrival', 'Leave Destination', 'Return to Campus'];
+                let titles = ['Log Departure', 'Log Arrival', 'Leave Destination', 'Return to Campus'];
                 Swal.fire({
-                    title: btnNames[stepNum - 1] + '?',
-                    text: "Your location and time will be recorded instantly.",
+                    title: titles[stepNum - 1],
+                    text: "Proceed to update your official travel status?",
                     icon: 'question', showCancelButton: true,
-                    confirmButtonColor: '#10b981', confirmButtonText: 'Confirm & Submit',
-                    borderRadius: '20px'
+                    confirmButtonColor: '#10b981', cancelButtonColor: '#94a3b8',
+                    confirmButtonText: 'Yes, Update Now', borderRadius: '20px'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        Swal.fire({ title: 'Acquiring Signal...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+                        Swal.fire({ title: 'Acquiring GPS...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
 
                         navigator.geolocation.getCurrentPosition(
                             (pos) => {
@@ -653,16 +664,14 @@ include './../config.php';
 
                                 fetch(urlHandler, {
                                     method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: bodyData
-                                })
-                                    .then(res => type === 'TA' ? res.json() : res.text())
+                                }).then(res => type === 'TA' ? res.json() : res.text())
                                     .then(data => {
-                                        let isSuccess = (type === 'TA') ? (data.status === 'success') : data.includes('success');
-                                        if (isSuccess) {
-                                            Swal.fire({ title: 'Recorded!', text: 'Your status has been updated.', icon: 'success', timer: 1500, showConfirmButton: false }).then(() => location.reload());
-                                        } else Swal.fire('Error', 'Failed to log.', 'error');
+                                        let success = (type === 'TA') ? (data.status === 'success') : data.includes('success');
+                                        if (success) Swal.fire({ title: 'Success!', icon: 'success', timer: 1500, showConfirmButton: false }).then(() => location.reload());
+                                        else Swal.fire('Error', 'Update failed.', 'error');
                                     });
                             },
-                            (err) => Swal.fire('GPS Error', 'Please enable location services in your phone settings.', 'error'),
+                            (err) => Swal.fire('GPS Error', 'Please enable location services.', 'error'),
                             { enableHighAccuracy: true }
                         );
                     }

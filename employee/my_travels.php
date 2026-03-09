@@ -476,7 +476,7 @@ function parseStep($data)
                         <i class="bi bi-folder-x text-muted" style="font-size: 4rem;"></i>
                         <h4 class="fw-bold mt-3 text-secondary">No Travel Records</h4>
                         <p class="text-muted">You haven't requested any Travel Authority yet.</p>
-                        <a href="create_ta.php" class="btn btn-primary rounded-pill px-4 mt-2 shadow-sm">Create Request
+                        <a href="request_ta" class="btn btn-primary rounded-pill px-4 mt-2 shadow-sm">Create Request
                             Now</a>
                     </div>
                 <?php endif; ?>

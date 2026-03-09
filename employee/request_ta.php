@@ -331,9 +331,9 @@ include './../config.php';
                 margin-bottom: 10px;
             }
 
-            .d-flex.justify-content-between {
+            /* .d-flex.justify-content-between {
                 flex-direction: column-reverse;
-            }
+            } */
         }
     </style>
 

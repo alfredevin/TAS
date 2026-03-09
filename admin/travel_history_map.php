@@ -23,7 +23,7 @@
     <style>
         /* Card Styling */
         .history-card {
-            border-radius: 20px;
+            border-radius: 24px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
             border: 1px solid #edf2f7;
             background: #fff;
@@ -74,7 +74,7 @@
 
         .table-custom thead th {
             color: #64748b;
-            font-weight: 700;
+            font-weight: 800;
             text-transform: uppercase;
             font-size: 11px;
             letter-spacing: 0.5px;
@@ -119,8 +119,8 @@
         }
 
         .emp-photo {
-            width: 42px;
-            height: 42px;
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
             object-fit: cover;
             border: 2px solid #e2e8f0;
@@ -203,6 +203,18 @@
         .bg-end {
             background-color: #800000;
         }
+
+        .duration-badge {
+            display: inline-flex;
+            align-items: center;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            color: #475569;
+            font-weight: 700;
+            font-size: 12px;
+            padding: 5px 10px;
+            border-radius: 8px;
+        }
     </style>
 
     <main id="main" class="main">
@@ -233,11 +245,12 @@
                         <div class="filter-area shadow-sm">
                             <div class="fw-bold text-muted small text-uppercase me-2"><i
                                     class="bi bi-funnel-fill me-1"></i> Filters:</div>
-                            <select id="typeFilter" class="form-select form-select-custom">
+
+                            <!-- <select id="typeFilter" class="form-select form-select-custom">
                                 <option value="">All Travel Types</option>
-                                <option value="TA">Travel Authority</option>
-                                <option value="PS">Pass Slip</option>
-                            </select>
+                                <option value="Travel Auth">Travel Authority (TA)</option>
+                                <option value="Pass Slip">Pass Slip (PS)</option>
+                            </select> -->
 
                             <select id="deptFilter" class="form-select form-select-custom">
                                 <option value="">All Departments</option>
@@ -251,11 +264,14 @@
                                         <th>Employee Info</th>
                                         <th>Travel Type</th>
                                         <th>Destination</th>
-                                        <th>Date of Travel</th>
+                                        <th>Date & Duration</th>
                                         <th class="text-center">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="historyTableBody">
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4">Loading data...</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -269,7 +285,6 @@
     <div class="modal fade" id="mapModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-xl">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
-
                 <div class="modal-header border-0 p-4 pb-3" style="background: #1e293b; color: white;">
                     <div>
                         <h5 class="modal-title fw-bold mb-1"><i class="bi bi-map me-2"></i>Road-Snap Route Tracker</h5>
@@ -295,7 +310,6 @@
 
                     <div class="modal-map-container shadow-sm border border-light">
                         <div id="modalMap"></div>
-
                         <div id="routingLoader"
                             style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); z-index: 1000; display: none; align-items: center; justify-content: center; flex-direction: column;">
                             <div class="spinner-border text-primary mb-2" role="status"></div>
@@ -304,11 +318,12 @@
                     </div>
                 </div>
 
-                <div class="modal-footer border-0 bg-light p-3 pt-0 justify-content-center">
+                <div class="modal-footer border-0 bg-light p-3 pt-0 justify-content-between">
+                    <div id="modal-duration-badge"
+                        class="duration-badge bg-white shadow-sm border-0 px-3 py-2 text-dark"></div>
                     <button type="button" class="btn btn-secondary rounded-pill px-5 fw-bold"
                         data-bs-dismiss="modal">Close Map</button>
                 </div>
-
             </div>
         </div>
     </div>
@@ -319,7 +334,7 @@
     <script>
         var modalMap = null;
         var routingControl = null;
-        var dataTableInstance = null; // Store DataTable instance
+        var dataTableInstance = null;
 
         function createStepIcon(bgClass, number) {
             return L.divIcon({
@@ -329,7 +344,36 @@
             });
         }
 
-        // FETCH DATA & POPULATE TABLE
+        // Helper: SMART Time Difference Calculator
+        function calculateDuration(startTimeStr, endTimeStr) {
+            if (!startTimeStr || startTimeStr === 'null' || !startTimeStr.includes('|')) return "Legacy Record";
+            if (!endTimeStr || endTimeStr === 'null' || !endTimeStr.includes('|')) return "Trip Ongoing";
+
+            try {
+                let startRaw = startTimeStr.split('|')[1].trim();
+                let endRaw = endTimeStr.split('|')[1].trim();
+
+                let baseDate = new Date().toLocaleDateString('en-US');
+                let d1 = new Date(baseDate + " " + startRaw);
+                let d2 = new Date(baseDate + " " + endRaw);
+
+                if (isNaN(d1) || isNaN(d2)) return "Time Format Error";
+
+                let diffMs = d2 - d1;
+                if (diffMs < 0) { diffMs += 24 * 60 * 60 * 1000; }
+
+                let diffMins = Math.round(diffMs / 60000);
+                let hrs = Math.floor(diffMins / 60);
+                let mins = diffMins % 60;
+
+                if (hrs === 0) return `${mins} mins`;
+                if (mins === 0) return `${hrs} hrs`;
+                return `${hrs}h ${mins}m`;
+            } catch (e) {
+                return "Calc Error";
+            }
+        }
+
         function loadTravelHistory() {
             fetch('get_travel_route_history.php')
                 .then(res => res.json())
@@ -342,19 +386,18 @@
 
         function populateDepartmentFilter(data) {
             let deptSelect = document.getElementById('deptFilter');
-            let departments = [...new Set(data.map(item => item.department_name))];
+            let departments = [...new Set(data.map(item => item.department_name ? item.department_name.trim() : 'Unassigned'))].filter(Boolean);
+
+            deptSelect.innerHTML = '<option value="">All Departments</option>';
 
             departments.forEach(dept => {
-                if (dept && dept.trim() !== '') {
-                    let option = document.createElement('option');
-                    option.value = dept;
-                    option.text = dept;
-                    deptSelect.appendChild(option);
-                }
+                let option = document.createElement('option');
+                option.value = dept;
+                option.text = dept;
+                deptSelect.appendChild(option);
             });
         }
 
-        // RENDER TABLE WITH DATATABLES
         function renderTable(data) {
             const tbody = document.getElementById('historyTableBody');
             let rowsHTML = '';
@@ -367,28 +410,34 @@
                 let avatarSrc = (emp.photo && emp.photo !== '') ? '../uploads/' + emp.photo : 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
                 let travelDateFmt = new Date(emp.date_of_travel).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
+                let durationStr = calculateDuration(emp.loc1, emp.loc4);
+                let durationBadge = `<div class="duration-badge mt-1"><i class="bi bi-stopwatch text-danger me-1"></i> ${durationStr}</div>`;
+
                 let routeDataEncoded = encodeURIComponent(JSON.stringify([emp.loc1, emp.loc2, emp.loc3, emp.loc4]));
                 let safeName = emp.name.replace(/'/g, "\\'");
                 let safeDest = emp.destination.replace(/'/g, "\\'");
+                let safeDept = emp.department_name ? emp.department_name.trim() : 'Unassigned';
 
-                // Added onclick to the TR tag so clicking anywhere on the row opens the map
+                // 🟢 FIX: Tinanggal na ang "data-search" sa <td> para basahin ng normal ng DataTables
                 rowsHTML += `
-                    <tr onclick="openMapModal('${safeName}', '${safeDest}', '${emp.travel_type}', '${routeDataEncoded}')" title="Click to view route">
+                    <tr onclick="openMapModal('${safeName}', '${safeDest}', '${emp.travel_type}', '${routeDataEncoded}', '${durationStr}')" title="Click to view route">
                         <td>
                             <div class="d-flex align-items-center">
                                 <img src="${avatarSrc}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3135/3135715.png'" class="emp-photo me-3 shadow-sm">
                                 <div>
                                     <div class="fw-bolder text-dark" style="font-size:15px;">${emp.name}</div>
-                                    <div class="text-muted small"><i class="bi bi-building me-1"></i><span class="dept-text">${emp.department_name}</span></div>
+                                    <div class="text-muted small"><i class="bi bi-building me-1"></i><span class="dept-text">${safeDept}</span></div>
                                 </div>
                             </div>
                         </td>
-                        <td data-search="${emp.travel_type}">${typeBadge}</td>
+                        <td>${typeBadge}</td>
                         <td><div class="fw-bold text-secondary text-truncate" style="max-width: 250px;">${emp.destination}</div></td>
-                        <td><span class="text-muted fw-bold"><i class="bi bi-calendar me-1"></i>${travelDateFmt}</span></td>
+                        <td>
+                            <div class="text-dark fw-bold"><i class="bi bi-calendar-event me-1 text-muted"></i> ${travelDateFmt}</div>
+                            ${durationBadge}
+                        </td>
                         <td class="text-center">
-                            <button class="btn btn-primary btn-sm rounded-pill px-4 shadow-sm" style="pointer-events: none;"> <i class="bi bi-map-fill me-1"></i> Map
-                            </button>
+                            <button class="btn btn-primary btn-sm rounded-pill px-4 shadow-sm" style="pointer-events: none;"> <i class="bi bi-map-fill me-1"></i> Map </button>
                         </td>
                     </tr>
                 `;
@@ -396,43 +445,37 @@
 
             tbody.innerHTML = rowsHTML;
 
-            // Initialize DataTables
-            if (dataTableInstance) {
-                dataTableInstance.destroy();
-            }
+            if (dataTableInstance) { dataTableInstance.destroy(); }
 
             dataTableInstance = $('#historyTable').DataTable({
                 pageLength: 10,
                 lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
-                order: [], // Keeps the order from backend
-                language: {
-                    search: "_INPUT_",
-                    searchPlaceholder: "Search records..."
-                },
-                columnDefs: [
-                    { orderable: false, targets: 4 } // Disable sorting on action column
-                ]
+                order: [],
+                language: { search: "_INPUT_", searchPlaceholder: "Search records..." },
+                columnDefs: [{ orderable: false, targets: 4 }]
             });
 
-            // Bind Custom Filters to DataTables
-            $('#typeFilter').on('change', function () {
-                let val = $.fn.dataTable.util.escapeRegex($(this).val());
-                dataTableInstance.column(1).search(val ? '^' + val + '$' : '', true, false).draw();
+            // 🟢 FIXED FILTERING SCRIPT 🟢
+            // Simpleng text matching. Hahanapin ng DataTables ang "Travel Auth" o "Pass Slip" sa column 1.
+            $('#typeFilter').off('change').on('change', function () {
+                let val = $(this).val();
+                dataTableInstance.column(1).search(val).draw();
             });
 
-            $('#deptFilter').on('change', function () {
+            // Hahanapin ng DataTables ang text ng Department sa column 0
+            $('#deptFilter').off('change').on('change', function () {
                 let val = $(this).val();
                 dataTableInstance.column(0).search(val).draw();
             });
         }
 
-
         // TRIGGER MODAL AND DRAW "ROAD SNAP" ROUTE
-        function openMapModal(name, destination, type, routeDataEncoded) {
+        function openMapModal(name, destination, type, routeDataEncoded, duration) {
             let routeData = JSON.parse(decodeURIComponent(routeDataEncoded));
             let fullType = (type === 'PS') ? "Pass Slip" : "Travel Authority";
 
             document.getElementById('modal-emp-details').innerHTML = `<b>${name}</b> &nbsp;•&nbsp; ${fullType} to ${destination}`;
+            document.getElementById('modal-duration-badge').innerHTML = `<i class="bi bi-stopwatch-fill text-danger me-2 fs-5"></i> Total Travel Time: <b class="ms-1 text-dark fs-6">${duration}</b>`;
 
             let myModal = new bootstrap.Modal(document.getElementById('mapModal'));
             myModal.show();
@@ -457,13 +500,20 @@
                 let labels = ['1. Departed', '2. Arrived', '3. Left Dest', '4. Returned'];
                 let classes = ['bg-start', 'bg-dest', 'bg-dest', 'bg-end'];
 
-                routeData.forEach((locStr) => {
+                routeData.forEach((locStr, index) => {
                     if (locStr && locStr !== 'null' && locStr.includes(',')) {
-                        let coords = locStr.split(',');
+                        let parts = locStr.split('|');
+                        let coords = parts[0].split(',');
+                        let timeStr = parts.length > 1 ? parts[1] : '';
+
                         let lat = parseFloat(coords[0]);
                         let lng = parseFloat(coords[1]);
+
                         if (!isNaN(lat) && !isNaN(lng)) {
-                            waypoints.push(L.latLng(lat, lng));
+                            let wLngLat = L.latLng(lat, lng);
+                            waypoints.push(wLngLat);
+                            wLngLat.customIndex = index;
+                            wLngLat.customTime = timeStr;
                         }
                     }
                 });
@@ -472,21 +522,19 @@
                     routingControl = L.Routing.control({
                         waypoints: waypoints,
                         router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1' }),
-                        lineOptions: {
-                            styles: [{ color: '#ef4444', opacity: 0.8, weight: 5, dashArray: '10, 10' }]
-                        },
+                        lineOptions: { styles: [{ color: '#ef4444', opacity: 0.8, weight: 5, dashArray: '10, 10' }] },
                         createMarker: function (i, waypoint, n) {
-                            let icon = createStepIcon(classes[i], i + 1);
-                            return L.marker(waypoint.latLng, { icon: icon }).bindPopup(`<div class="text-center fw-bold">${labels[i]}</div>`);
+                            let idx = waypoint.latLng.customIndex;
+                            let timeTxt = waypoint.latLng.customTime ? `<br><small class="text-muted"><i class="bi bi-clock me-1"></i>${waypoint.latLng.customTime}</small>` : '';
+                            let icon = createStepIcon(classes[idx], idx + 1);
+
+                            return L.marker(waypoint.latLng, { icon: icon }).bindPopup(`<div class="text-center fw-bold">${labels[idx]}${timeTxt}</div>`);
                         },
                         fitSelectedRoutes: true,
                         show: false
                     }).addTo(modalMap);
 
-                    routingControl.on('routesfound', function () {
-                        document.getElementById('routingLoader').style.display = 'none';
-                    });
-
+                    routingControl.on('routesfound', function () { document.getElementById('routingLoader').style.display = 'none'; });
                     routingControl.on('routingerror', function () {
                         document.getElementById('routingLoader').style.display = 'none';
                         Swal.fire('Routing Error', 'Could not snap to roads. Using straight lines instead.', 'warning');
@@ -494,7 +542,8 @@
 
                 } else if (waypoints.length === 1) {
                     document.getElementById('routingLoader').style.display = 'none';
-                    let icon = createStepIcon('bg-start', 1);
+                    let idx = waypoints[0].customIndex;
+                    let icon = createStepIcon(classes[idx], 1);
                     L.marker(waypoints[0], { icon: icon }).addTo(modalMap);
                     modalMap.flyTo(waypoints[0], 16, { duration: 1.5 });
                 } else {
